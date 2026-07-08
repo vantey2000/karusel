@@ -142,6 +142,22 @@
   .empty{color:var(--muted);font-size:15px;padding:60px 20px;text-align:center;border:1.5px dashed var(--line);border-radius:14px}
   .warn{background:#2a2410;border:1px solid #5a4d1a;color:#e8d68a;font-size:12.5px;padding:10px 12px;border-radius:9px;margin-top:10px}
 
+  /* инструкция */
+  .helpbtn{width:100%;margin-bottom:20px;background:transparent;border:1px solid var(--line);color:var(--accent);
+    border-radius:10px;padding:11px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+  .helpbtn:hover{border-color:var(--accent)}
+  .helpov{position:fixed;inset:0;background:rgba(10,10,12,.78);z-index:100;display:none;overflow-y:auto;padding:24px 16px}
+  .helpov.open{display:block}
+  .helpbox{max-width:620px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:26px 24px 30px;position:relative}
+  .helpbox h2{font-size:18px;font-weight:800;margin-bottom:12px;padding-right:44px}
+  .helpbox h3{font-size:14.5px;font-weight:700;margin:18px 0 6px;color:var(--accent)}
+  .helpbox p,.helpbox li{font-size:13.5px;color:#c9c9d0;line-height:1.55}
+  .helpbox ul{margin:6px 0 0 18px}
+  .helpbox li{margin-bottom:6px}
+  .helpclose{position:absolute;top:14px;right:14px;background:#161619;border:1px solid var(--line);color:var(--ink);
+    width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:15px;line-height:1}
+
   /* ===== мобильная раскладка: ОДНА общая прокрутка, ничего не ездит ===== */
   @media(max-width:900px){
     .app{grid-template-columns:1fr}
@@ -169,6 +185,7 @@
   <div class="controls">
     <h1>Конструктор карусели</h1>
     <div class="sub">Загрузи фон, впиши ник, вставь текст пунктами - слайды соберутся сами. Формат 1080×1350 (4:5)</div>
+    <button class="helpbtn" id="helpbtn">Как пользоваться - инструкция</button>
 
     <div class="field">
       <label>Фон (твоё фото)</label>
@@ -238,6 +255,39 @@
     <div class="hint" id="sharehint" style="display:none;margin:-8px 0 14px"></div>
     <div class="slides" id="slides"></div>
     <div class="empty" id="empty">Загрузи фон и вставь текст - слайды появятся здесь</div>
+  </div>
+
+  <!-- ИНСТРУКЦИЯ -->
+  <div class="helpov" id="helpov">
+    <div class="helpbox">
+      <button class="helpclose" id="helpclose" aria-label="Закрыть">✕</button>
+      <h2>Как собрать карусель за 5 минут</h2>
+      <p>Регистрация не нужна. Фото никуда не отправляется - слайды собираются прямо в твоём браузере</p>
+      <h3>1. Загрузи своё фото</h3>
+      <p>Лучше вертикальное, где ты стоишь сбоку кадра, а не по центру, на тёмном или спокойном фоне - так текст читается лучше всего</p>
+      <h3>2. Впиши свой ник</h3>
+      <p>Как в Instagram, например @anna.smm - он появится сверху на каждом слайде</p>
+      <h3>3. Укажи, где ты на фото</h3>
+      <p>Кнопки «Справа / Слева / Нет». Текст сам обходит твоё лицо - программа должна знать, с какой ты стороны</p>
+      <h3>4. Настрой рамку под себя</h3>
+      <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик, затемнение фона. Пипеткой меняешь цвет линий, ползунком - длину верхней линии, чтобы не ложилась на лицо. Не уверен - оставь как есть</p>
+      <h3>5. Вставь текст поста</h3>
+      <ul>
+        <li>первая строка = заголовок, он станет обложкой</li>
+        <li>дальше пункты с нумерацией 1. 2. 3. - каждый станет отдельным слайдом</li>
+        <li>последняя строка = вопрос к читателю, он станет финальным слайдом</li>
+      </ul>
+      <p>Между блоками оставляй пустую строку. Число слайдов посчитается само. Посмотреть пример - кнопка «Демо-текст»</p>
+      <h3>6. Выложи</h3>
+      <p>С телефона: «Поделиться» → в меню выбери Instagram → слайды падают прямо в новый пост. С компьютера: «Скачать все (ZIP)» - один архив со всеми слайдами</p>
+      <h3>Если что-то пошло не так</h3>
+      <ul>
+        <li>в меню «Поделиться» нет Instagram → выбери «Сохранить изображения», слайды упадут в галерею - выложи из Instagram как обычно</li>
+        <li>текст наехал на лицо → проверь шаг 3 или укороти верхнюю линию ползунком. Не помогло - возьми фото, где ты ближе к краю кадра</li>
+        <li>слайдов получилось не столько, сколько ждал → проверь нумерацию: каждый пункт «1.», «2.», «3.» с новой строки = один слайд</li>
+        <li>кнопка «Поделиться» пишет, что недоступна → ты на компьютере, она работает с телефона. Скачай ZIP</li>
+      </ul>
+    </div>
   </div>
 </div>
 
@@ -599,6 +649,9 @@ const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn'
 Object.keys(map).forEach(id=>el(id).onchange=e=>{ state[map[id]]=e.target.checked; rerender(); });
 el('dlall').onclick=downloadAll;
 el('shareall').onclick=shareAll;
+el('helpbtn').onclick=()=>el('helpov').classList.add('open');
+el('helpclose').onclick=()=>el('helpov').classList.remove('open');
+el('helpov').addEventListener('click',e=>{ if(e.target===el('helpov')) el('helpov').classList.remove('open'); });
 el('demo').onclick=()=>{
   el('text').value = `3 ошибки новичка в контенте\n\n1. Пишешь для всех. Когда текст «для всех», он ни для кого - человек не узнаёт в нём себя и листает дальше\n\n2. Прячешь мысль в конце. Первая строка решает всё, слабый крючок убивает даже гениальный пост\n\n3. Боишься повторяться. Одну сильную мысль можно упаковать десять раз по-разному, и каждый раз кто-то увидит её впервые\n\nА какую из трёх узнал у себя?`;
   rerender();
