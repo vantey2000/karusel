@@ -206,11 +206,13 @@
   <div class="stage">
     <div class="stagehead">
       <div class="count" id="count">Слайдов: <b>0</b></div>
-      <div style="display:flex;gap:10px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn ghost" id="demo">Демо-текст</button>
-        <button class="btn" id="dlall" disabled>Скачать все слайды</button>
+        <button class="btn ghost" id="shareall" disabled>Поделиться</button>
+        <button class="btn" id="dlall" disabled>Скачать все (ZIP)</button>
       </div>
     </div>
+    <div class="hint" id="sharehint" style="display:none;margin:-8px 0 14px"></div>
     <div class="slides" id="slides"></div>
     <div class="empty" id="empty">Загрузи фон и вставь текст - слайды появятся здесь</div>
   </div>
@@ -445,7 +447,8 @@ function rerender(){
   const cont = el('slides'); cont.innerHTML='';
   el('count').innerHTML = 'Слайдов: <b>'+slidesData.length+'</b>';
   el('empty').style.display = slidesData.length? 'none':'block';
-  el('dlall').disabled = !(slidesData.length && bgImg);
+  el('dlall').disabled = el('shareall').disabled = !(slidesData.length && bgImg);
+  shareCache=null; shareHint('');
 
   // предупреждение, если нет структуры
   const hasPoints = slidesData.some(s=>s.kind==='point');
@@ -470,14 +473,81 @@ function makeFull(i){
   renderSlide(cv, slidesData[i], i, slidesData.length);
   return cv;
 }
+function slideBlob(i){ return new Promise(res=>makeFull(i).toBlob(res,'image/png')); }
 function downloadOne(i){
-  makeFull(i).toBlob(b=>{
+  slideBlob(i).then(b=>{
     const a=document.createElement('a'); a.href=URL.createObjectURL(b);
     a.download='slide_'+(i+1)+'.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-  },'image/png');
+  });
 }
+
+/* ---------- ZIP (метод store, PNG уже сжаты) ---------- */
+const CRC_TABLE=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;
+  for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c;}return t;})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_TABLE[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function buildZip(files){ // files: [{name, data:Uint8Array}]
+  const enc=new TextEncoder(); const parts=[], central=[]; let offset=0;
+  for(const f of files){
+    const name=enc.encode(f.name), crc=crc32(f.data), sz=f.data.length;
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true);
+    lh.setUint32(14,crc,true); lh.setUint32(18,sz,true); lh.setUint32(22,sz,true);
+    lh.setUint16(26,name.length,true);
+    parts.push(new Uint8Array(lh.buffer), name, f.data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true);
+    ch.setUint32(16,crc,true); ch.setUint32(20,sz,true); ch.setUint32(24,sz,true);
+    ch.setUint16(28,name.length,true); ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + sz;
+  }
+  let cdSize=0; central.forEach(p=>cdSize+=p.length);
+  const eocd=new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0,0x06054b50,true); eocd.setUint16(8,files.length,true); eocd.setUint16(10,files.length,true);
+  eocd.setUint32(12,cdSize,true); eocd.setUint32(16,offset,true);
+  return new Blob([...parts,...central,new Uint8Array(eocd.buffer)],{type:'application/zip'});
+}
+
 async function downloadAll(){
-  for(let i=0;i<slidesData.length;i++){ downloadOne(i); await new Promise(r=>setTimeout(r,400)); }
+  const btn=el('dlall'); btn.disabled=true; const old=btn.textContent; btn.textContent='Собираю…';
+  try{
+    const files=[];
+    for(let i=0;i<slidesData.length;i++){
+      const b=await slideBlob(i);
+      files.push({name:'slide_'+(i+1)+'.png', data:new Uint8Array(await b.arrayBuffer())});
+    }
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(buildZip(files)); a.download='карусель.zip'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  } finally { btn.textContent=old; btn.disabled=false; }
+}
+
+/* ---------- поделиться: системное меню телефона -> Instagram ---------- */
+let shareCache=null; // File[] от текущего рендера: второй тап шарит мгновенно
+function shareHint(msg){ const h=el('sharehint'); h.style.display=msg?'block':'none'; h.textContent=msg||''; }
+async function shareAll(){
+  const btn=el('shareall'); const old='Поделиться';
+  try{
+    if(!shareCache){
+      btn.disabled=true; btn.textContent='Готовлю…';
+      const files=[];
+      for(let i=0;i<slidesData.length;i++){
+        const b=await slideBlob(i);
+        files.push(new File([b],'slide_'+(i+1)+'.png',{type:'image/png'}));
+      }
+      shareCache=files;
+      btn.disabled=false; btn.textContent=old;
+    }
+    if(navigator.canShare && navigator.canShare({files:shareCache})){
+      await navigator.share({files:shareCache, title:'Карусель'});
+      shareHint('');
+    } else {
+      shareHint('На этом устройстве «Поделиться» недоступно. Открой страницу с телефона - там из меню слайды отправляются сразу в Instagram. Либо скачай ZIP');
+    }
+  }catch(e){
+    if(e && e.name==='NotAllowedError') shareHint('Слайды готовы - нажми «Поделиться» ещё раз');
+    /* отмена шэринга пользователем - не ошибка */
+  }finally{ btn.disabled=false; btn.textContent=old; }
 }
 
 /* ---------- события ---------- */
@@ -505,6 +575,7 @@ document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
 const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn',t_dark:'darkOn'};
 Object.keys(map).forEach(id=>el(id).onchange=e=>{ state[map[id]]=e.target.checked; rerender(); });
 el('dlall').onclick=downloadAll;
+el('shareall').onclick=shareAll;
 el('demo').onclick=()=>{
   el('text').value = `3 ошибки новичка в контенте\n\n1. Пишешь для всех. Когда текст «для всех», он ни для кого - человек не узнаёт в нём себя и листает дальше\n\n2. Прячешь мысль в конце. Первая строка решает всё, слабый крючок убивает даже гениальный пост\n\n3. Боишься повторяться. Одну сильную мысль можно упаковать десять раз по-разному, и каждый раз кто-то увидит её впервые\n\nА какую из трёх узнал у себя?`;
   rerender();
