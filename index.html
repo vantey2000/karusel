@@ -242,7 +242,7 @@
     <div class="field">
       <label>Текст поста</label>
       <textarea id="text" spellcheck="false" placeholder="Первая строка = обложка&#10;&#10;1. Первый пункт. Пояснение к нему в пару предложений&#10;&#10;2. Второй пункт. И его пояснение&#10;&#10;3. Третий пункт&#10;&#10;А ты уже так делаешь?"></textarea>
-      <div class="hint">Правило одно: заголовок сверху, пункты нумеруй 1. 2. 3., в конце вопрос. Число слайдов посчитается само</div>
+      <div class="hint">Заголовок сверху, дальше блоки через пустую строку - каждый станет слайдом: первое предложение жирным, остальное обычным. Нумерация 1. 2. 3. не обязательна. В конце вопрос</div>
       <div class="warn" id="warn" style="display:none"></div>
     </div>
   </div>
@@ -279,7 +279,7 @@
       <h3>5. Вставь текст поста</h3>
       <ul>
         <li>первая строка = заголовок, он станет обложкой</li>
-        <li>дальше пункты с нумерацией 1. 2. 3. - каждый станет отдельным слайдом</li>
+        <li>дальше блоки через пустую строку - каждый станет отдельным слайдом: первое предложение выделится жирным, остальное пойдёт обычным текстом. Нумерация 1. 2. 3. не обязательна, но если есть - номера сохранятся</li>
         <li>последняя строка = вопрос к читателю, он станет финальным слайдом</li>
       </ul>
       <p>Между блоками оставляй пустую строку. Число слайдов посчитается само. Посмотреть пример - кнопка «Демо-текст»</p>
@@ -339,7 +339,15 @@ function parseSlides(raw){
     if(s.kind==='point'){ out.push(s); return; }
     if(i===0) out.push({kind:'cover', title:s.text});
     else if(i===raw2.length-1 && /[?]\s*$/.test(s.text)) out.push({kind:'cta', title:s.text});
-    else out.push({kind:'cover', title:s.text});
+    else {
+      // обычный блок без номера = тоже слайд-пункт:
+      // первое предложение жирным, отступ, дальше обычный текст
+      const sm = s.text.match(/^(.+?[.!?…])\s+([\s\S]+)$/);
+      let title, body;
+      if(sm){ title=sm[1]; body=sm[2]; } else { title=s.text; body=''; }
+      title = title.replace(/\s*[.．]\s*$/,'');
+      out.push({kind:'point', num:'', title, body});
+    }
   });
   return out;
 }
@@ -530,17 +538,17 @@ function rerender(){
   el('dlall').disabled = el('shareall').disabled = !(slidesData.length && bgImg);
   shareCache=null; shareHint('');
 
-  // предупреждение, если нет структуры
-  const hasPoints = slidesData.some(s=>s.kind==='point');
-  el('warn').style.display = (slidesData.length && !hasPoints)? 'block':'none';
-  if(slidesData.length && !hasPoints) el('warn').textContent = 'Не вижу пунктов «1. 2. 3.» - весь текст пойдёт по центру. Пронумеруй пункты, чтобы получилась карусель';
+  // предупреждение, если весь текст слипся в один блок
+  const oneBlob = slidesData.length===1 && el('text').value.trim().length>140;
+  el('warn').style.display = oneBlob? 'block':'none';
+  if(oneBlob) el('warn').textContent = 'Весь текст стал одним слайдом. Раздели его пустыми строками (Enter дважды) - каждый блок станет отдельным слайдом';
 
   slidesData.forEach((s,i)=>{
     const card=document.createElement('div'); card.className='card';
     const cv=document.createElement('canvas');
     renderSlide(cv, s, i, slidesData.length);
     const cap=document.createElement('div'); cap.className='cap';
-    cap.textContent = s.kind==='cover'?'обложка':(s.kind==='cta'?'финал':'пункт '+s.num);
+    cap.textContent = s.kind==='cover'?'обложка':(s.kind==='cta'?'финал':(s.num?'пункт '+s.num:'слайд'));
     const dl=document.createElement('button'); dl.className='dl'; dl.textContent='скачать';
     dl.onclick=()=>downloadOne(i);
     card.appendChild(cv); card.appendChild(cap); card.appendChild(dl);
