@@ -216,8 +216,13 @@
         <label class="tg"><input type="checkbox" id="t_icons" checked> иконки share/save</label>
         <label class="tg"><input type="checkbox" id="t_arrow" checked> стрелка «дальше»</label>
         <label class="tg"><input type="checkbox" id="t_counter" checked> счётчик N/total</label>
-        <label class="tg"><input type="checkbox" id="t_dark" checked> затемнить фон</label>
       </div>
+    </div>
+
+    <div class="field">
+      <label>Затемнение фона</label>
+      <input type="range" id="darklvl" min="0" max="85" value="45">
+      <div class="hint">Чем темнее фон, тем лучше читается текст. 0 - без затемнения</div>
     </div>
 
     <div class="field">
@@ -270,7 +275,7 @@
       <h3>3. Укажи, где ты на фото</h3>
       <p>Кнопки «Справа / Слева / Нет». Текст сам обходит твоё лицо - программа должна знать, с какой ты стороны</p>
       <h3>4. Настрой рамку под себя</h3>
-      <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик, затемнение фона. Пипеткой меняешь цвет линий, ползунком - длину верхней линии, чтобы не ложилась на лицо. Не уверен - оставь как есть</p>
+      <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик. Пипеткой меняешь цвет линий, ползунками - длину верхней линии (чтобы не ложилась на лицо) и затемнение фона (чем темнее, тем лучше читается текст). Не уверен - оставь как есть</p>
       <h3>5. Вставь текст поста</h3>
       <ul>
         <li>первая строка = заголовок, он станет обложкой</li>
@@ -299,8 +304,8 @@ const LEFT=96;
 const el = id => document.getElementById(id);
 let bgImg = null;
 let state = {
-  nick:'@YOUR.NICK', figside:'right', accent:'#C9B37E', lineLen:72,
-  nickOn:true, linesOn:true, iconsOn:true, arrowOn:true, counterOn:true, darkOn:true
+  nick:'@YOUR.NICK', figside:'right', accent:'#C9B37E', lineLen:72, dark:45,
+  nickOn:true, linesOn:true, iconsOn:true, arrowOn:true, counterOn:true
 };
 
 /* ---------- парсер текста в слайды ---------- */
@@ -422,10 +427,12 @@ function renderSlide(canvas, slide, index, total){
     ctx.drawImage(bgImg, (W-dw)/2, (H-dh)/2, dw, dh);
   } else { ctx.fillStyle='#232325'; ctx.fillRect(0,0,W,H); }
 
-  // затемнение для читаемости текста
-  if(state.darkOn){
+  // затемнение для читаемости текста: уровень с ползунка (45 = прежний вид)
+  if(state.dark>0){
+    const k = state.dark/100;
+    const edge = Math.min(.92, k*1.22).toFixed(3), mid = (k*0.78).toFixed(3);
     const g = ctx.createLinearGradient(0,0,W,H);
-    g.addColorStop(0,'rgba(10,10,12,.55)'); g.addColorStop(.5,'rgba(10,10,12,.35)'); g.addColorStop(1,'rgba(10,10,12,.55)');
+    g.addColorStop(0,`rgba(10,10,12,${edge})`); g.addColorStop(.5,`rgba(10,10,12,${mid})`); g.addColorStop(1,`rgba(10,10,12,${edge})`);
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   }
 
@@ -645,8 +652,9 @@ document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#figside button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); state.figside=b.dataset.v; rerender();
 });
-const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn',t_dark:'darkOn'};
+const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn'};
 Object.keys(map).forEach(id=>el(id).onchange=e=>{ state[map[id]]=e.target.checked; rerender(); });
+el('darklvl').oninput=e=>{ state.dark=parseInt(e.target.value); rerender(); };
 el('dlall').onclick=downloadAll;
 el('shareall').onclick=shareAll;
 el('helpbtn').onclick=()=>el('helpov').classList.add('open');
