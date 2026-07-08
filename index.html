@@ -89,9 +89,12 @@
   :root{ --gold:#C9B37E; --bg:#17171a; --panel:#202024; --line:#2e2e34; --ink:#ededf0; --muted:#9a9aa2; --accent:#C9B37E; }
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Montserrat',-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--ink);
-    -webkit-font-smoothing:antialiased;line-height:1.5}
-  .app{display:grid;grid-template-columns:380px 1fr;min-height:100vh}
-  @media(max-width:900px){ .app{grid-template-columns:1fr} }
+    -webkit-font-smoothing:antialiased;line-height:1.5;overflow-x:hidden;-webkit-text-size-adjust:100%}
+  html{overscroll-behavior-y:none}
+  .app{display:grid;grid-template-columns:380px 1fr;min-height:100vh;max-width:100vw}
+  /* канвас слайда имеет внутреннюю ширину 1080px - без min-width:0 он распирает грид-колонку */
+  .controls,.stage{min-width:0}
+  .card canvas{max-width:100%}
 
   /* левая панель управления */
   .controls{background:var(--panel);border-right:1px solid var(--line);padding:26px 22px 60px;overflow-y:auto;max-height:100vh}
@@ -138,6 +141,26 @@
     padding:5px 10px;border-radius:20px;cursor:pointer;font-family:inherit}
   .empty{color:var(--muted);font-size:15px;padding:60px 20px;text-align:center;border:1.5px dashed var(--line);border-radius:14px}
   .warn{background:#2a2410;border:1px solid #5a4d1a;color:#e8d68a;font-size:12.5px;padding:10px 12px;border-radius:9px;margin-top:10px}
+
+  /* ===== мобильная раскладка: ОДНА общая прокрутка, ничего не ездит ===== */
+  @media(max-width:900px){
+    .app{grid-template-columns:1fr}
+    /* убираем вложенные скроллы - страница скроллится как единое целое */
+    .controls{max-height:none;overflow:visible;border-right:none;border-bottom:1px solid var(--line);padding:20px 16px 10px}
+    .stage{max-height:none;overflow:visible;padding:18px 16px 130px} /* запас под нижнюю панель */
+    /* 16px в полях ввода = iOS не автозумит страницу при фокусе */
+    .field input[type=text], .field textarea, .field select{font-size:16px}
+    .field textarea{min-height:150px}
+    /* главные кнопки всегда под пальцем - фиксированная панель внизу */
+    .actions{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;gap:8px;
+      background:rgba(23,23,26,.97);border-top:1px solid var(--line);
+      padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+    .actions .btn{flex:1;padding:13px 8px;font-size:13.5px;white-space:nowrap}
+    /* слайды в две колонки на всю ширину */
+    .slides{gap:12px}
+    .card{width:calc(50% - 6px)}
+    .card canvas{width:100%;height:auto}
+  }
 </style>
 </head>
 <body>
@@ -206,7 +229,7 @@
   <div class="stage">
     <div class="stagehead">
       <div class="count" id="count">Слайдов: <b>0</b></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="actions" style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn ghost" id="demo">Демо-текст</button>
         <button class="btn ghost" id="shareall" disabled>Поделиться</button>
         <button class="btn" id="dlall" disabled>Скачать все (ZIP)</button>
