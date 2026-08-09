@@ -121,6 +121,11 @@
   .colorrow{display:flex;align-items:center;gap:10px}
   .colorrow input[type=color]{width:44px;height:34px;border:1px solid var(--line);border-radius:8px;background:#161619;cursor:pointer}
   .field input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  .labelrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+  .labelrow label{margin-bottom:0}
+  .clearbtn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;
+    padding:4px 11px;font-family:inherit;font-size:11.5px;cursor:pointer;transition:.15s}
+  .clearbtn:hover{color:var(--ink);border-color:var(--accent)}
 
   /* правая рабочая зона */
   .stage{padding:26px 30px 80px;overflow-y:auto;max-height:100vh}
@@ -264,7 +269,10 @@
     </div>
 
     <div class="field">
-      <label>Текст поста</label>
+      <div class="labelrow">
+        <label>Текст поста</label>
+        <button type="button" class="clearbtn" id="cleartext">Очистить</button>
+      </div>
       <textarea id="text" spellcheck="false" placeholder="Первая строка = обложка&#10;&#10;1. Первый пункт. Пояснение к нему в пару предложений&#10;&#10;2. Второй пункт. И его пояснение&#10;&#10;3. Третий пункт&#10;&#10;А ты уже так делаешь?"></textarea>
       <div class="hint">Заголовок сверху, дальше блоки через пустую строку - каждый станет слайдом: первое предложение жирным, остальное обычным. Нумерация 1. 2. 3. не обязательна. В конце вопрос</div>
       <div class="warn" id="warn" style="display:none"></div>
@@ -733,6 +741,7 @@ el('drop').addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) loadFile(e.d
 
 el('nick').oninput=e=>{ state.nick=e.target.value; rerender(); };
 el('text').oninput=rerender;
+el('cleartext').onclick=()=>{ el('text').value=''; rerender(); el('text').focus(); };
 el('accent').oninput=e=>{ state.accent=e.target.value; document.documentElement.style.setProperty('--accent',e.target.value); rerender(); };
 el('linelen').oninput=e=>{ state.lineLen=parseInt(e.target.value); rerender(); };
 document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
