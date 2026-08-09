@@ -281,7 +281,7 @@
         <button type="button" class="clearbtn" id="cleartext">Очистить</button>
       </div>
       <textarea id="text" spellcheck="false" placeholder="Первая строка = обложка&#10;&#10;1. Первый пункт. Пояснение к нему в пару предложений&#10;&#10;2. Второй пункт. И его пояснение&#10;&#10;3. Третий пункт&#10;&#10;А ты уже так делаешь?"></textarea>
-      <div class="hint">Заголовок сверху, дальше блоки через пустую строку - каждый станет слайдом: первое предложение жирным, остальное обычным. Нумерация 1. 2. 3. не обязательна. В конце вопрос</div>
+      <div class="hint">Заголовок сверху, дальше блоки через пустую строку - каждый станет слайдом: первое предложение жирным, остальное обычным. Нумерация 1. 2. 3. не обязательна. В конце вопрос. Enter один раз = перенос строки на слайде ровно там, где ты его поставил</div>
       <div class="warn" id="warn" style="display:none"></div>
     </div>
   </div>
@@ -320,6 +320,7 @@
         <li>первая строка = заголовок, он станет обложкой</li>
         <li>дальше блоки через пустую строку - каждый станет отдельным слайдом: первое предложение выделится жирным, остальное пойдёт обычным текстом. Нумерация 1. 2. 3. не обязательна, но если есть - номера сохранятся</li>
         <li>последняя строка = вопрос к читателю, он станет финальным слайдом</li>
+        <li>нужен перенос в конкретном месте - нажми Enter один раз, и строка на слайде оборвётся именно там. Enter дважды (пустая строка) - это уже новый слайд</li>
       </ul>
       <p>Между блоками оставляй пустую строку. Число слайдов посчитается само. Посмотреть пример - кнопка «Демо-текст»</p>
       <h3>6. Выложи</h3>
@@ -405,14 +406,14 @@ function parseSlides(raw){
   const raw2 = blocks.map(b=>{
     const m = b.match(/^\s*(\d+)[.)]\s+([\s\S]+)$/);
     if(m){
-      let rest = m[2].replace(/\n+/g,' ').trim();
-      const sm = rest.match(/^(.+?[.!?…])\s+([\s\S]+)$/);
+      let rest = m[2].trim();
+      const sm = rest.match(/^([\s\S]+?[.!?…])\s+([\s\S]+)$/);
       let title, body;
       if(sm){ title=sm[1]; body=sm[2]; } else { title=rest; body=''; }
       title = title.replace(/\s*[.．]\s*$/,'');
       return {kind:'point', num:m[1], title, body};
     }
-    return {kind:'plain', text:b.replace(/\n+/g,' ').trim()};
+    return {kind:'plain', text:b};
   });
   const out=[];
   raw2.forEach((s,i)=>{
@@ -422,7 +423,7 @@ function parseSlides(raw){
     else {
       // обычный блок без номера = тоже слайд-пункт:
       // первое предложение жирным, отступ, дальше обычный текст
-      const sm = s.text.match(/^(.+?[.!?…])\s+([\s\S]+)$/);
+      const sm = s.text.match(/^([\s\S]+?[.!?…])\s+([\s\S]+)$/);
       let title, body;
       if(sm){ title=sm[1]; body=sm[2]; } else { title=s.text; body=''; }
       title = title.replace(/\s*[.．]\s*$/,'');
@@ -432,16 +433,19 @@ function parseSlides(raw){
   return out;
 }
 
-/* ---------- перенос строк по ширине (canvas) ---------- */
+/* ---------- перенос строк по ширине (canvas); одиночный \n = ручной перенос ---------- */
 function wrapByWidth(ctx, text, maxW){
-  const words = text.split(/\s+/);
-  const lines=[]; let line='';
-  for(const w of words){
-    const t = line?line+' '+w:w;
-    if(ctx.measureText(t).width > maxW && line){ lines.push(line); line=w; }
-    else line=t;
+  const lines=[];
+  for(const seg of text.split('\n')){
+    const words = seg.split(/\s+/).filter(Boolean);
+    let line='';
+    for(const w of words){
+      const t = line?line+' '+w:w;
+      if(ctx.measureText(t).width > maxW && line){ lines.push(line); line=w; }
+      else line=t;
+    }
+    if(line) lines.push(line);
   }
-  if(line) lines.push(line);
   return lines;
 }
 
@@ -474,17 +478,20 @@ function layoutPoint(ctx, slide, scaleFont){
     y += 0; // placeholder
     function layoutParagraph(txt, size, lh, weight){
       ctx.font = `${weight} ${size}px Montserrat, sans-serif`;
-      const words = txt.split(/\s+/); let line='';
+      let line='';
       const flush = ()=>{ if(line){ items.push({t:line,size,weight,y,lh}); y+=lh; line=''; } };
-      for(const w of words){
-        const le = leftEdgeAt(y, state.figside), re = rightEdgeAt(y, state.figside);
-        const maxW = re-le;
-        const cand = line?line+' '+w:w;
-        ctx.font = `${weight} ${size}px Montserrat, sans-serif`;
-        if(ctx.measureText(cand).width > maxW && line){ flush(); line=w; }
-        else line=cand;
+      for(const seg of txt.split('\n')){
+        const words = seg.split(/\s+/).filter(Boolean);
+        for(const w of words){
+          const le = leftEdgeAt(y, state.figside), re = rightEdgeAt(y, state.figside);
+          const maxW = re-le;
+          const cand = line?line+' '+w:w;
+          ctx.font = `${weight} ${size}px Montserrat, sans-serif`;
+          if(ctx.measureText(cand).width > maxW && line){ flush(); line=w; }
+          else line=cand;
+        }
+        flush(); // конец сегмента = ручной перенос
       }
-      flush();
     }
     // тело
     if(slide.body){ y += gap; layoutParagraph(slide.body, bSize, bLH, '400'); }
