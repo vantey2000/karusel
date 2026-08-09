@@ -126,6 +126,7 @@
   .clearbtn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;
     padding:4px 11px;font-family:inherit;font-size:11.5px;cursor:pointer;transition:.15s}
   .clearbtn:hover{color:var(--ink);border-color:var(--accent)}
+  .pct{font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
 
   /* правая рабочая зона */
   .stage{padding:26px 30px 80px;overflow-y:auto;max-height:100vh}
@@ -249,7 +250,10 @@
     </div>
 
     <div class="field">
-      <label>Затемнение фона</label>
+      <div class="labelrow">
+        <label>Затемнение фона</label>
+        <span class="pct" id="darkpct">45%</span>
+      </div>
       <input type="range" id="darklvl" min="0" max="85" value="45">
       <div class="hint">Чем темнее фон, тем лучше читается текст. 0 - без затемнения</div>
     </div>
@@ -263,7 +267,10 @@
     </div>
 
     <div class="field">
-      <label>Длина верхней линии</label>
+      <div class="labelrow">
+        <label>Длина верхней линии</label>
+        <span class="pct" id="linelenpct">72%</span>
+      </div>
       <input type="range" id="linelen" min="20" max="100" value="72">
       <div class="hint">Укорачивай, если линия ложится на лицо. При «человек слева» линия и ник сами уходят вправо. Нижняя линия всегда во всю ширину</div>
     </div>
@@ -743,14 +750,15 @@ el('nick').oninput=e=>{ state.nick=e.target.value; rerender(); };
 el('text').oninput=rerender;
 el('cleartext').onclick=()=>{ el('text').value=''; rerender(); el('text').focus(); };
 el('accent').oninput=e=>{ state.accent=e.target.value; document.documentElement.style.setProperty('--accent',e.target.value); rerender(); };
-el('linelen').oninput=e=>{ state.lineLen=parseInt(e.target.value); rerender(); };
+function updPct(){ el('darkpct').textContent=el('darklvl').value+'%'; el('linelenpct').textContent=el('linelen').value+'%'; }
+el('linelen').oninput=e=>{ state.lineLen=parseInt(e.target.value); updPct(); rerender(); };
 document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#figside button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); state.figside=b.dataset.v; rerender();
 });
 const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn'};
 Object.keys(map).forEach(id=>el(id).onchange=e=>{ state[map[id]]=e.target.checked; rerender(); });
-el('darklvl').oninput=e=>{ state.dark=parseInt(e.target.value); rerender(); };
+el('darklvl').oninput=e=>{ state.dark=parseInt(e.target.value); updPct(); rerender(); };
 el('dlall').onclick=downloadAll;
 el('shareall').onclick=shareAll;
 el('helpbtn').onclick=()=>el('helpov').classList.add('open');
@@ -823,6 +831,7 @@ function applySettings(s){
   Object.keys(map).forEach(id=>{ const k=map[id];
     if(typeof s[k]==='boolean'){ state[k]=s[k]; el(id).checked=s[k]; } });
   if(s.lastPhotoId!==undefined) state.lastPhotoId=s.lastPhotoId;
+  updPct();
 }
 
 /* сжатие перед загрузкой: длинная сторона 1600, JPEG - иначе сожжём хранилище */
