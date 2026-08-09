@@ -276,6 +276,29 @@
     </div>
 
     <div class="field">
+      <label>Шрифт</label>
+      <select id="fontsel">
+        <option value="Montserrat" selected>Montserrat - фирменный</option>
+        <option value="Inter">Inter</option>
+        <option value="Manrope">Manrope</option>
+        <option value="Rubik">Rubik</option>
+        <option value="Golos Text">Golos Text</option>
+        <option value="Playfair Display">Playfair Display - с засечками</option>
+        <option value="Unbounded">Unbounded - широкий</option>
+      </select>
+      <div class="hint">Меняет текст слайдов. Ник и счётчик остаются фирменными. Новый шрифт подгружается из интернета пару секунд</div>
+    </div>
+
+    <div class="field">
+      <div class="labelrow">
+        <label>Размер шрифта</label>
+        <span class="pct" id="fontpct">100%</span>
+      </div>
+      <input type="range" id="fontsize" min="70" max="130" value="100">
+      <div class="hint">100% - стандарт. Если текст с таким размером не влезает на слайд, программа сама ужмёт его до вмещения</div>
+    </div>
+
+    <div class="field">
       <div class="labelrow">
         <label>Текст поста</label>
         <button type="button" class="clearbtn" id="cleartext">Очистить</button>
@@ -314,7 +337,7 @@
       <h3>3. Укажи, где ты на фото</h3>
       <p>Кнопки «Справа / Слева / Нет». Текст сам обходит твоё лицо - программа должна знать, с какой ты стороны</p>
       <h3>4. Настрой рамку под себя</h3>
-      <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик. Пипеткой меняешь цвет линий, ползунками - длину верхней линии (чтобы не ложилась на лицо) и затемнение фона (чем темнее, тем лучше читается текст). Не уверен - оставь как есть</p>
+      <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик. Пипеткой меняешь цвет линий, ползунками - длину верхней линии (чтобы не ложилась на лицо) и затемнение фона (чем темнее, тем лучше читается текст). Ниже можно сменить шрифт слайдов и размер текста в процентах - если текст с выбранным размером не влезает, программа сама ужмёт его. Не уверен - оставь как есть</p>
       <h3>5. Вставь текст поста</h3>
       <ul>
         <li>первая строка = заголовок, он станет обложкой</li>
@@ -386,8 +409,37 @@ const el = id => document.getElementById(id);
 let bgImg = null;
 let state = {
   nick:'@YOUR.NICK', figside:'right', accent:'#C9B37E', lineLen:72, dark:45,
-  nickOn:true, linesOn:true, iconsOn:true, arrowOn:true, counterOn:true
+  nickOn:true, linesOn:true, iconsOn:true, arrowOn:true, counterOn:true,
+  font:'Montserrat', fontScale:100
 };
+
+/* ---------- шрифты слайдов: Montserrat вшит, остальные тянутся с Google Fonts ---------- */
+const FONTS={
+  'Montserrat':null,
+  'Inter':'Inter:wght@400;700;800',
+  'Manrope':'Manrope:wght@400;700;800',
+  'Rubik':'Rubik:wght@400;700;800',
+  'Golos Text':'Golos+Text:wght@400;700;800',
+  'Playfair Display':'Playfair+Display:wght@400;700;800',
+  'Unbounded':'Unbounded:wght@400;700;800'
+};
+const fontReady={'Montserrat':true};
+function fontFam(){ return '"'+(state.font||'Montserrat')+'", Montserrat, sans-serif'; }
+function ensureFont(name){
+  if(fontReady[name]||!FONTS[name]) return Promise.resolve();
+  const id='gf-'+name.replace(/\s+/g,'-').toLowerCase();
+  let linkReady=Promise.resolve();
+  if(!document.getElementById(id)){
+    const l=document.createElement('link'); l.id=id; l.rel='stylesheet';
+    l.href='https://fonts.googleapis.com/css2?family='+FONTS[name]+'&display=swap';
+    // без ожидания onload двух шагов fonts.load резолвится пустым - css ещё не доехал
+    linkReady=new Promise(res=>{ l.onload=res; l.onerror=res; setTimeout(res,5000); });
+    document.head.appendChild(l);
+  }
+  return linkReady
+    .then(()=>Promise.all(['400','700','800'].map(w=>document.fonts.load(w+' 48px "'+name+'"'))))
+    .then(()=>{ fontReady[name]=true; }).catch(()=>{});
+}
 
 /* ---------- парсер текста в слайды ---------- */
 function parseSlides(raw){
@@ -464,8 +516,9 @@ function leftEdgeAt(y, figside){
 
 /* раскладка пункта: заголовок(bold)+тело, обтекание лица, вертикальный центр, авто-ужатие */
 function layoutPoint(ctx, slide, scaleFont){
-  let tSize = Math.round(48*scaleFont), bSize = Math.round(41*scaleFont);
-  const gap = Math.round(30*scaleFont);
+  const us = (state.fontScale||100)/100;
+  let tSize = Math.round(48*us*scaleFont), bSize = Math.round(41*us*scaleFont);
+  const gap = Math.round(30*us*scaleFont);
   const tLH = Math.round(tSize*1.23), bLH = Math.round(bSize*1.42);
   const numTitle = (slide.num? slide.num+'. ':'') + slide.title;
 
@@ -473,11 +526,11 @@ function layoutPoint(ctx, slide, scaleFont){
   function build(startY){
     let y=startY; const items=[];
     // заголовок
-    ctx.font = `700 ${tSize}px Montserrat, sans-serif`;
+    ctx.font = `700 ${tSize}px ${fontFam()}`;
     layoutParagraph(numTitle, tSize, tLH, '700');
     y += 0; // placeholder
     function layoutParagraph(txt, size, lh, weight){
-      ctx.font = `${weight} ${size}px Montserrat, sans-serif`;
+      ctx.font = `${weight} ${size}px ${fontFam()}`;
       let line='';
       const flush = ()=>{ if(line){ items.push({t:line,size,weight,y,lh}); y+=lh; line=''; } };
       for(const seg of txt.split('\n')){
@@ -486,7 +539,7 @@ function layoutPoint(ctx, slide, scaleFont){
           const le = leftEdgeAt(y, state.figside), re = rightEdgeAt(y, state.figside);
           const maxW = re-le;
           const cand = line?line+' '+w:w;
-          ctx.font = `${weight} ${size}px Montserrat, sans-serif`;
+          ctx.font = `${weight} ${size}px ${fontFam()}`;
           if(ctx.measureText(cand).width > maxW && line){ flush(); line=w; }
           else line=cand;
         }
@@ -581,12 +634,12 @@ function renderSlide(canvas, slide, index, total){
 
   if(slide.kind==='cover' || slide.kind==='cta'){
     const isCta = slide.kind==='cta';
-    let size = isCta?54:62; const maxW = isCta?880:900;
+    let size = Math.round((isCta?54:62)*((state.fontScale||100)/100)); const maxW = isCta?880:900;
     let weight = isCta?'700':'800';
     // авто-ужатие под зону
     let lines, lh;
     for(let s=0;s<8;s++){
-      ctx.font=`${weight} ${size}px Montserrat, sans-serif`;
+      ctx.font=`${weight} ${size}px ${fontFam()}`;
       lines = wrapByWidth(ctx, slide.title, maxW);
       lh = Math.round(size*(isCta?1.3:1.24));
       if(lines.length*lh <= (ZONE_BOTTOM-ZONE_TOP)) break;
@@ -606,7 +659,7 @@ function renderSlide(canvas, slide, index, total){
     }
     ctx.textAlign='left';
     for(const it of res.items){
-      ctx.font = `${it.weight} ${it.size}px Montserrat, sans-serif`;
+      ctx.font = `${it.weight} ${it.size}px ${fontFam()}`;
       ctx.fillStyle = it.weight==='400' ? '#ececee' : '#ffffff';
       const le = leftEdgeAt(it.y, state.figside);
       ctx.fillText(it.t, le, it.y + it.size*0.82);
@@ -757,7 +810,7 @@ el('nick').oninput=e=>{ state.nick=e.target.value; rerender(); };
 el('text').oninput=rerender;
 el('cleartext').onclick=()=>{ el('text').value=''; rerender(); el('text').focus(); };
 el('accent').oninput=e=>{ state.accent=e.target.value; document.documentElement.style.setProperty('--accent',e.target.value); rerender(); };
-function updPct(){ el('darkpct').textContent=el('darklvl').value+'%'; el('linelenpct').textContent=el('linelen').value+'%'; }
+function updPct(){ el('darkpct').textContent=el('darklvl').value+'%'; el('linelenpct').textContent=el('linelen').value+'%'; el('fontpct').textContent=el('fontsize').value+'%'; }
 el('linelen').oninput=e=>{ state.lineLen=parseInt(e.target.value); updPct(); rerender(); };
 document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#figside button').forEach(x=>x.classList.remove('on'));
@@ -766,6 +819,8 @@ document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
 const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn'};
 Object.keys(map).forEach(id=>el(id).onchange=e=>{ state[map[id]]=e.target.checked; rerender(); });
 el('darklvl').oninput=e=>{ state.dark=parseInt(e.target.value); updPct(); rerender(); };
+el('fontsize').oninput=e=>{ state.fontScale=parseInt(e.target.value); updPct(); rerender(); };
+el('fontsel').onchange=e=>{ state.font=e.target.value; rerender(); ensureFont(state.font).then(rerender); };
 el('dlall').onclick=downloadAll;
 el('shareall').onclick=shareAll;
 el('helpbtn').onclick=()=>el('helpov').classList.add('open');
@@ -812,7 +867,7 @@ async function api(path,opts={}){
 function settingsSnapshot(){
   return {nick:state.nick,figside:state.figside,accent:state.accent,lineLen:state.lineLen,dark:state.dark,
     nickOn:state.nickOn,linesOn:state.linesOn,iconsOn:state.iconsOn,arrowOn:state.arrowOn,counterOn:state.counterOn,
-    lastPhotoId:state.lastPhotoId||''};
+    font:state.font,fontScale:state.fontScale,lastPhotoId:state.lastPhotoId||''};
 }
 function scheduleSave(){
   clearTimeout(saveTimer);
@@ -835,6 +890,8 @@ function applySettings(s){
     document.documentElement.style.setProperty('--accent',s.accent); }
   if(typeof s.lineLen==='number'){ state.lineLen=s.lineLen; el('linelen').value=s.lineLen; }
   if(typeof s.dark==='number'){ state.dark=s.dark; el('darklvl').value=s.dark; }
+  if(typeof s.fontScale==='number'&&s.fontScale>=70&&s.fontScale<=130){ state.fontScale=s.fontScale; el('fontsize').value=s.fontScale; }
+  if(typeof s.font==='string'&&FONTS.hasOwnProperty(s.font)){ state.font=s.font; el('fontsel').value=s.font; ensureFont(s.font).then(rerender); }
   Object.keys(map).forEach(id=>{ const k=map[id];
     if(typeof s[k]==='boolean'){ state[k]=s[k]; el(id).checked=s[k]; } });
   if(s.lastPhotoId!==undefined) state.lastPhotoId=s.lastPhotoId;
