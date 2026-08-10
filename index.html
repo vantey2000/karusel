@@ -121,6 +121,10 @@
   .seg button.on{background:var(--accent);color:#1a1a1a;border-color:var(--accent);font-weight:700}
   .colorrow{display:flex;align-items:center;gap:10px}
   .colorrow input[type=color]{width:44px;height:34px;border:1px solid var(--line);border-radius:8px;background:#161619;cursor:pointer}
+  .swatches{display:flex;gap:7px;flex-wrap:wrap}
+  .swatches button{width:28px;height:28px;border-radius:50%;border:1px solid #3a3a42;cursor:pointer;padding:0;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+  .swatches button.on{outline:2px solid var(--accent);outline-offset:2px}
   .field input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
   .labelrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
   .labelrow label{margin-bottom:0}
@@ -287,11 +291,11 @@
 
     <div class="field">
       <div class="labelrow">
-        <label>Затемнение фона</label>
+        <label id="darklabel">Затемнение фона</label>
         <span class="pct" id="darkpct">45%</span>
       </div>
       <input type="range" id="darklvl" min="0" max="85" value="45">
-      <div class="hint">Чем темнее фон, тем лучше читается текст. 0 - без затемнения</div>
+      <div class="hint" id="darkhint">Чем темнее фон, тем лучше читается текст. 0 - без затемнения</div>
     </div>
 
     <div class="field">
@@ -300,6 +304,21 @@
         <input type="color" id="accent" value="#C9B37E">
         <span class="hint" style="margin:0">верхняя и нижняя линии рамки</span>
       </div>
+    </div>
+
+    <div class="field">
+      <label>Цвет текста</label>
+      <div class="colorrow">
+        <input type="color" id="textcolor" value="#FFFFFF">
+        <div class="swatches" id="swatches">
+          <button type="button" data-c="#FFFFFF" style="background:#FFFFFF" title="Белый"></button>
+          <button type="button" data-c="#F0E4CC" style="background:#F0E4CC" title="Кремовый"></button>
+          <button type="button" data-c="#C9B37E" style="background:#C9B37E" title="Золото"></button>
+          <button type="button" data-c="#8A8A93" style="background:#8A8A93" title="Серый"></button>
+          <button type="button" data-c="#161616" style="background:#161616" title="Чёрный"></button>
+        </div>
+      </div>
+      <div class="hint">Весь текст слайдов сразу: заголовок, пункты, ник, счётчик. Берёшь тёмный цвет для светлого фото - подсветка под текстом и вуаль фона перевернутся сами, читаться будет так же</div>
     </div>
 
     <div class="field">
@@ -322,7 +341,7 @@
         <option value="Playfair Display">Playfair Display - с засечками</option>
         <option value="Unbounded">Unbounded - широкий</option>
       </select>
-      <div class="hint">Меняет текст слайдов. Ник и счётчик остаются фирменными. Новый шрифт подгружается из интернета пару секунд</div>
+      <div class="hint">Меняет текст слайдов. Ник и счётчик остаются фирменным шрифтом (цвет у них общий с текстом). Новый шрифт подгружается из интернета пару секунд</div>
     </div>
 
     <div class="field">
@@ -381,7 +400,8 @@
       <h3>3. Укажи, где ты на фото</h3>
       <p>Кнопки «Справа / Слева / Нет». Текст сам обходит твоё лицо - программа должна знать, с какой ты стороны</p>
       <h3>4. Настрой рамку под себя</h3>
-      <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик. Пипеткой меняешь цвет линий, ползунками - длину верхней линии (чтобы не ложилась на лицо) и затемнение фона (чем темнее, тем лучше читается текст). Ниже можно сменить шрифт слайдов и размеры текста в процентах - обложка и остальные слайды отдельно; если текст с выбранным размером не влезает, программа сама ужмёт его. Не уверен - оставь как есть</p>
+      <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик. Пипетками меняешь цвет линий и цвет текста, ползунками - длину верхней линии (чтобы не ложилась на лицо) и затемнение фона (чем темнее, тем лучше читается текст). Ниже можно сменить шрифт слайдов и размеры текста в процентах - обложка и остальные слайды отдельно; если текст с выбранным размером не влезает, программа сама ужмёт его. Не уверен - оставь как есть</p>
+      <p><b>Про цвет текста.</b> Пять кружков рядом с пипеткой - готовые варианты (белый, кремовый, золото, серый, чёрный), пипетка даёт любой свой. Цвет ложится сразу на весь текст: обложку, пункты, ник и счётчик. Взял тёмный текст под светлое фото - программа сама перевернёт подсветку под буквами и вуаль на фоне (ползунок станет «Осветление фона»), так что читаться будет одинаково хорошо</p>
       <h3>5. Вставь текст поста</h3>
       <ul>
         <li>первая строка = заголовок, он станет обложкой</li>
@@ -463,8 +483,24 @@ let bgImg = null;
 let state = {
   nick:'@YOUR.NICK', figside:'right', accent:'#C9B37E', lineLen:72, dark:45,
   nickOn:true, linesOn:true, iconsOn:true, arrowOn:true, counterOn:true,
-  font:'Montserrat', fontScale:100, coverScale:100
+  font:'Montserrat', fontScale:100, coverScale:100, textColor:'#FFFFFF'
 };
+
+/* ---------- цвет текста: вторичные элементы = тот же цвет, приглушённый к фону ---------- */
+function hexRgb(h){
+  h=String(h||'#ffffff').replace('#','');
+  if(h.length===3) h=h.split('').map(c=>c+c).join('');
+  if(!/^[0-9a-f]{6}$/i.test(h)) h='ffffff';
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+function isLightText(){ const [r,g,b]=hexRgb(state.textColor); return (0.2126*r+0.7152*g+0.0722*b)/255 > 0.5; }
+// k=1 - сам цвет текста; k<1 - приглушение: светлый текст уводим к чёрному, тёмный к белому
+// при белом тексте даёт ровно прежние оттенки: 0.93=#EDEDED (ник), 0.925=#ECECEC (тело), 0.66=#A8A8A8 (счётчик)
+function soften(k){
+  const [r,g,b]=hexRgb(state.textColor), t=isLightText()?0:255;
+  const m=c=>Math.round(c*k + t*(1-k));
+  return 'rgb('+m(r)+','+m(g)+','+m(b)+')';
+}
 let templates=[]; // сохранённые шаблоны настроек (живут в кабинете и в kab_local)
 
 /* ---------- шрифты слайдов: Montserrat вшит, остальные тянутся с Google Fonts ---------- */
@@ -629,12 +665,14 @@ function renderSlide(canvas, slide, index, total){
     ctx.drawImage(bgImg, (W-dw)/2, (H-dh)/2, dw, dh);
   } else { ctx.fillStyle='#232325'; ctx.fillRect(0,0,W,H); }
 
-  // затемнение для читаемости текста: уровень с ползунка (45 = прежний вид)
+  // вуаль для читаемости текста: уровень с ползунка (45 = прежний вид)
+  // светлый текст -> тёмная вуаль; тёмный текст -> светлая, иначе чёрные буквы утонут в затемнении
   if(state.dark>0){
     const k = state.dark/100;
+    const veil = isLightText() ? '10,10,12' : '246,246,248';
     const edge = Math.min(.92, k*1.22).toFixed(3), mid = (k*0.78).toFixed(3);
     const g = ctx.createLinearGradient(0,0,W,H);
-    g.addColorStop(0,`rgba(10,10,12,${edge})`); g.addColorStop(.5,`rgba(10,10,12,${mid})`); g.addColorStop(1,`rgba(10,10,12,${edge})`);
+    g.addColorStop(0,`rgba(${veil},${edge})`); g.addColorStop(.5,`rgba(${veil},${mid})`); g.addColorStop(1,`rgba(${veil},${edge})`);
     ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   }
 
@@ -654,7 +692,7 @@ function renderSlide(canvas, slide, index, total){
     ctx.beginPath(); ctx.moveTo(48,1245); ctx.lineTo(1035,1245); ctx.stroke();
   }
   if(state.nickOn && state.nick){
-    ctx.fillStyle='#ededf0'; ctx.font='600 30px Montserrat, sans-serif';
+    ctx.fillStyle=soften(.93); ctx.font='600 30px Montserrat, sans-serif';
     ctx.letterSpacing='4px';
     ctx.textAlign = mirror ? 'right' : 'left';
     ctx.fillText(state.nick.toUpperCase(), mirror ? 972 : 108, 80);
@@ -662,7 +700,7 @@ function renderSlide(canvas, slide, index, total){
     ctx.letterSpacing='0px';
   }
   if(state.iconsOn){
-    ctx.strokeStyle='#e8e8ea'; ctx.lineWidth=3; ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.strokeStyle=soften(.91); ctx.lineWidth=3; ctx.lineJoin='round'; ctx.lineCap='round';
     // самолётик (share) слева внизу
     ctx.beginPath(); ctx.moveTo(120,1285); ctx.lineTo(196,1285); ctx.lineTo(150,1340); ctx.lineTo(146,1305); ctx.closePath(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(196,1285); ctx.lineTo(146,1305); ctx.stroke();
@@ -671,20 +709,22 @@ function renderSlide(canvas, slide, index, total){
   }
   // стрелка »» - на всех, кроме последнего
   if(state.arrowOn && index < total-1){
-    ctx.strokeStyle='#A8A8A8'; ctx.lineWidth=8; ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.strokeStyle=soften(.66); ctx.lineWidth=8; ctx.lineJoin='round'; ctx.lineCap='round';
     const bx=931, by=1170;
     ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+17,by+23); ctx.lineTo(bx,by+46); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(bx+29,by); ctx.lineTo(bx+46,by+23); ctx.lineTo(bx+29,by+46); ctx.stroke();
   }
   // счётчик N/total слева внизу
   if(state.counterOn){
-    ctx.fillStyle='#A8A8A8'; ctx.font='500 38px Montserrat, sans-serif'; ctx.textAlign='left';
+    ctx.fillStyle=soften(.66); ctx.font='500 38px Montserrat, sans-serif'; ctx.textAlign='left';
     ctx.fillText((index+1)+'/'+total, 118, 1208);
   }
 
   // --- текст ---
-  ctx.fillStyle='#ffffff';
-  ctx.shadowColor='rgba(0,0,0,.6)'; ctx.shadowBlur=16; ctx.shadowOffsetY=2;
+  // подсветка под буквами всегда контрастна тексту: под светлым тёмная, под тёмным светлая
+  ctx.fillStyle=state.textColor||'#ffffff';
+  ctx.shadowColor = isLightText() ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.62)';
+  ctx.shadowBlur=16; ctx.shadowOffsetY=2;
 
   if(slide.kind==='cover' || slide.kind==='cta'){
     const isCta = slide.kind==='cta';
@@ -714,7 +754,7 @@ function renderSlide(canvas, slide, index, total){
     ctx.textAlign='left';
     for(const it of res.items){
       ctx.font = `${it.weight} ${it.size}px ${fontFam()}`;
-      ctx.fillStyle = it.weight==='400' ? '#ececee' : '#ffffff';
+      ctx.fillStyle = it.weight==='400' ? soften(.925) : (state.textColor||'#ffffff');
       const le = leftEdgeAt(it.y, state.figside);
       ctx.fillText(it.t, le, it.y + it.size*0.82);
     }
@@ -864,6 +904,21 @@ el('nick').oninput=e=>{ state.nick=e.target.value; rerender(); };
 el('text').oninput=rerender;
 el('cleartext').onclick=()=>{ el('text').value=''; rerender(); el('text').focus(); };
 el('accent').oninput=e=>{ state.accent=e.target.value; document.documentElement.style.setProperty('--accent',e.target.value); rerender(); };
+/* цвет текста: пипетка + быстрые цвета; ползунок вуали меняет смысл на «осветление», когда текст тёмный */
+function updTextColorUI(){
+  const v=(state.textColor||'#FFFFFF').toUpperCase();
+  el('textcolor').value=v;
+  document.querySelectorAll('#swatches button').forEach(b=>b.classList.toggle('on', b.dataset.c.toUpperCase()===v));
+  const light=isLightText();
+  el('darklabel').textContent = light?'Затемнение фона':'Осветление фона';
+  el('darkhint').textContent = light
+    ? 'Чем темнее фон, тем лучше читается текст. 0 - без затемнения'
+    : 'Текст тёмный, поэтому фон теперь высветляется - так буквы читаются на любом фото. 0 - без осветления';
+}
+function setTextColor(v){ state.textColor=v; updTextColorUI(); rerender(); }
+el('textcolor').oninput=e=>setTextColor(e.target.value);
+document.querySelectorAll('#swatches button').forEach(b=>b.onclick=()=>setTextColor(b.dataset.c));
+updTextColorUI(); // подсветить активный кружок на старте, до применения настроек кабинета
 function updPct(){ el('darkpct').textContent=el('darklvl').value+'%'; el('linelenpct').textContent=el('linelen').value+'%'; el('fontpct').textContent=el('fontsize').value+'%'; el('coverpct').textContent=el('coversize').value+'%'; }
 el('linelen').oninput=e=>{ state.lineLen=parseInt(e.target.value); updPct(); rerender(); };
 document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
@@ -933,7 +988,7 @@ async function api(path,opts={}){
 function settingsSnapshot(){
   return {nick:state.nick,figside:state.figside,accent:state.accent,lineLen:state.lineLen,dark:state.dark,
     nickOn:state.nickOn,linesOn:state.linesOn,iconsOn:state.iconsOn,arrowOn:state.arrowOn,counterOn:state.counterOn,
-    font:state.font,fontScale:state.fontScale,coverScale:state.coverScale,
+    font:state.font,fontScale:state.fontScale,coverScale:state.coverScale,textColor:state.textColor,
     templates:templates,lastPhotoId:state.lastPhotoId||''};
 }
 function scheduleSave(){
@@ -963,8 +1018,9 @@ function applySettings(s){
   if(Array.isArray(s.templates)){ templates=s.templates.slice(0,12).filter(t=>t&&typeof t==='object'); renderTemplates(); }
   Object.keys(map).forEach(id=>{ const k=map[id];
     if(typeof s[k]==='boolean'){ state[k]=s[k]; el(id).checked=s[k]; } });
+  if(typeof s.textColor==='string'&&/^#[0-9a-f]{6}$/i.test(s.textColor)) state.textColor=s.textColor;
   if(s.lastPhotoId!==undefined) state.lastPhotoId=s.lastPhotoId;
-  updPct();
+  updPct(); updTextColorUI();
 }
 
 /* сжатие перед загрузкой: длинная сторона 1600, JPEG - иначе сожжём хранилище */
@@ -1054,6 +1110,7 @@ function renderTemplates(){
 }
 function applyTemplate(t){
   const s={...t}; delete s.name; delete s.lastPhotoId; delete s.templates;
+  if(!s.textColor) s.textColor='#FFFFFF'; // шаблоны, сохранённые до появления цвета текста, были белыми
   applySettings(s);
   if(t.lastPhotoId&&kabPhotos.some(p=>p.id===t.lastPhotoId)) setBgFromPhoto(t.lastPhotoId);
   rerender(); scheduleSave(); closeCab(); toast('Шаблон «'+(t.name||'')+'» применён ✓');
