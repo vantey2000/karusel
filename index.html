@@ -991,6 +991,12 @@ function settingsSnapshot(){
     font:state.font,fontScale:state.fontScale,coverScale:state.coverScale,textColor:state.textColor,
     templates:templates,lastPhotoId:state.lastPhotoId||''};
 }
+let putFailNoted=false, putRetryT=null;
+function notePutFail(e){
+  // не глотать молча: сказать один раз и дослать самому, когда связь вернётся
+  clearTimeout(putRetryT); putRetryT=setTimeout(()=>scheduleSave(),30000);
+  if(!putFailNoted){ putFailNoted=true; toast((e&&e.error)||'Настройки пока не долетели до кабинета - дошлю, как появится связь'); }
+}
 function scheduleSave(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
@@ -999,9 +1005,56 @@ function scheduleSave(){
     // на сервер - только если серверное состояние известно и реально поменялось: бережём лимит записей KV
     if(kabToken&&lastSavedSnap!==null&&snap!==lastSavedSnap)
       api('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:snap})
-        .then(()=>{ lastSavedSnap=snap; }).catch(()=>{});
+        .then(()=>{ lastSavedSnap=snap; putFailNoted=false; },e=>notePutFail(e));
   },1200);
 }
+
+/* доклеить в templates те, которых нет (по имени); true = что-то добавилось.
+   Страховка от затирания: пустой список с одной стороны не убивает шаблоны с другой */
+function addMissingTemplates(extra){
+  let added=false;
+  for(const t of (extra||[])){
+    if(!t||typeof t!=='object'||!t.name) continue;
+    if(!templates.some(m=>m&&m.name===t.name)&&templates.length<12){ templates.push(t); added=true; }
+  }
+  return added;
+}
+
+/* немедленная отправка (для шаблонов - без дебаунса и без вранья в тосте) */
+async function flushSave(){
+  clearTimeout(saveTimer);
+  try{ localStorage.setItem('kab_local',JSON.stringify({...settingsSnapshot(),text:el('text').value})); }catch(e){}
+  if(!kabToken) return {ok:true};
+  try{
+    if(lastSavedSnap===null){
+      // сервер в этой сессии ещё не читали - сперва подтянуть его шаблоны и слить со своими
+      const me=await api('/api/me');
+      if(me.settings&&Array.isArray(me.settings.templates)) addMissingTemplates(me.settings.templates);
+      renderTemplates(); lastSavedSnap='';
+    }
+    const snap=JSON.stringify(settingsSnapshot());
+    if(snap!==lastSavedSnap){
+      await api('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:snap});
+      lastSavedSnap=snap; putFailNoted=false;
+    }
+    return {ok:true};
+  }catch(e){ notePutFail(e); return {ok:false,error:(e&&e.error)||''}; }
+}
+
+/* вкладка проснулась (телефон, вторая вкладка) - тихо свериться с сервером,
+   чтобы залежавшееся состояние не затёрло шаблоны, сохранённые с другого устройства */
+function syncTemplatesFromServer(){
+  if(!kabToken||document.visibilityState!=='visible') return;
+  api('/api/me').then(me=>{
+    const srv=(me.settings&&Array.isArray(me.settings.templates))?me.settings.templates:[];
+    const added=addMissingTemplates(srv);
+    if(added) renderTemplates();
+    if(lastSavedSnap===null) lastSavedSnap=''; // сервер теперь известен - сохранения снова ходят
+    if(JSON.stringify(settingsSnapshot())!==lastSavedSnap) scheduleSave(); // дослать локальное, которого нет на сервере
+  }).catch(()=>{});
+}
+document.addEventListener('visibilitychange',syncTemplatesFromServer);
+addEventListener('pageshow',e=>{ if(e.persisted) syncTemplatesFromServer(); });
 
 function applySettings(s){
   if(!s) return;
@@ -1102,7 +1155,7 @@ function renderTemplates(){
     const x=document.createElement('button'); x.className='tpldel'; x.textContent='✕'; x.title='Удалить шаблон';
     x.onclick=ev=>{ ev.stopPropagation();
       if(!confirm('Удалить шаблон «'+(t.name||'')+'»?')) return;
-      templates.splice(i,1); renderTemplates(); scheduleSave(); };
+      templates.splice(i,1); renderTemplates(); flushSave(); };
     d.onclick=()=>applyTemplate(t);
     d.appendChild(n); d.appendChild(x); box.appendChild(d);
   });
@@ -1148,9 +1201,13 @@ async function kabAuth(mode){
       kabPhotos=[]; lastSavedSnap=JSON.stringify(settingsSnapshot());
       if(lastFile){ try{ await uploadPhoto(lastFile,true); toast('Твоё фото уже в кабинете ✓'); }catch(e){} }
     } else {
+      const localTpls=templates.slice(); // шаблоны, жившие на этом устройстве до входа
       const me=await api('/api/me');
       kabEmail=me.email; kabPhotos=me.photos||[];
-      applySettings(me.settings); lastSavedSnap=JSON.stringify(settingsSnapshot()); rerender();
+      applySettings(me.settings); lastSavedSnap=JSON.stringify(settingsSnapshot());
+      // локальные шаблоны, которых нет на сервере, не теряем - доклеиваем и досылаем
+      if(addMissingTemplates(localTpls)){ renderTemplates(); scheduleSave(); }
+      rerender();
       if(state.lastPhotoId&&kabPhotos.some(p=>p.id===state.lastPhotoId)&&!bgImg) setBgFromPhoto(state.lastPhotoId);
     }
     updateCabBtn(); showCabView();
@@ -1176,12 +1233,16 @@ el('cablogin').onclick=()=>kabAuth('login');
 el('cabreg').onclick=()=>kabAuth('register');
 el('cabpass').addEventListener('keydown',e=>{ if(e.key==='Enter') kabAuth('login'); });
 el('cabexit').onclick=()=>{ if(confirm('Выйти из кабинета? Фото и настройки останутся в нём')) kabLogout(); };
-el('tplsave').onclick=()=>{
+el('tplsave').onclick=async()=>{
   if(templates.length>=12){ toast('Максимум 12 шаблонов - удали какой-нибудь'); return; }
   const name=(prompt('Название шаблона (например «Тёмный с засечками»):')||'').trim();
   if(!name) return;
   const t={...settingsSnapshot(), name:name.slice(0,40)}; delete t.templates;
-  templates.push(t); renderTemplates(); scheduleSave(); toast('Шаблон «'+t.name+'» сохранён ✓');
+  templates.push(t); renderTemplates();
+  // тост честный: «сохранён» только после ответа сервера, а не до отправки
+  const r=await flushSave();
+  toast(r.ok?'Шаблон «'+t.name+'» сохранён в кабинете ✓'
+           :'Шаблон пока только на этом устройстве - в кабинет дошлю, как появится связь');
 };
 el('cabdel').onclick=async()=>{
   if(!confirm('Точно удалить кабинет и ВСЕ фото в нём? Это навсегда')) return;
@@ -1206,6 +1267,7 @@ el('cabfile').onchange=async e=>{
   }catch(e){}
   if(kabToken){
     const preSnap=JSON.stringify(settingsSnapshot()); // защита от гонки: юзер мог начать работать, пока летит /api/me
+    const localTpls=templates.slice(); // копия локальных шаблонов ДО применения серверных
     try{
       const me=await api('/api/me');
       kabEmail=me.email;
@@ -1213,6 +1275,9 @@ el('cabfile').onchange=async e=>{
       kabPhotos=[...localOnly,...(me.photos||[])];
       if(JSON.stringify(settingsSnapshot())===preSnap){
         applySettings(me.settings); lastSavedSnap=JSON.stringify(settingsSnapshot());
+        // сервер прислал пусто, а локально шаблоны есть = чей-то залежавшийся клиент их затёр.
+        // Возвращаем и досылаем на сервер, вместо того чтобы затереть и локальную копию
+        if(addMissingTemplates(localTpls)){ renderTemplates(); scheduleSave(); }
       }
       renderGallery();
       if(el('cabov').classList.contains('open')) showCabView();
