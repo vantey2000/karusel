@@ -133,6 +133,26 @@
   .clearbtn:hover{color:var(--ink);border-color:var(--accent)}
   .pct{font-size:12px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
 
+  /* ===== стиль карусели: на панели видны только контролы выбранного стиля ===== */
+  body[data-style="plate"] .only-classic{display:none}
+  body[data-style="classic"] .only-plate{display:none}
+  details.fine>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);padding:10px 12px;
+    border:1px solid var(--line);border-radius:10px;list-style:none;user-select:none}
+  details.fine>summary::-webkit-details-marker{display:none}
+  details.fine[open]>summary{margin-bottom:12px}
+
+  /* ===== пул фото: миниатюры под дропом, первое = главное (фон классики) ===== */
+  .pool{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .pool:empty{display:none}
+  .pthumb{position:relative;width:56px;height:70px;border-radius:8px;overflow:hidden;background:#161619;border:2px solid var(--line);cursor:pointer;flex:none}
+  .pthumb img,.pthumb canvas{width:100%;height:100%;object-fit:cover;display:block}
+  .pthumb.main{border-color:var(--accent)}
+  .pthumb .pdel{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:10px;line-height:1;cursor:pointer;padding:0}
+  .pthumb .pnum{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);color:#fff;font-size:10px;text-align:center;padding:1px 0}
+  .card.pickable{cursor:pointer}
+  .card .ph{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:3px 8px;border-radius:20px}
+  .pickgrid .thumb.on{outline:2px solid var(--accent);outline-offset:2px}
+
   /* правая рабочая зона */
   .stage{padding:26px 30px 80px;overflow-y:auto;max-height:100vh}
   .stagehead{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
@@ -259,8 +279,10 @@
 
     <div class="field">
       <label>Фон (твоё фото)</label>
-      <div class="drop" id="drop">Перетащи сюда фото или <b>нажми, чтобы выбрать</b><br><span class="hint" style="color:#6f6f78">лучше вертикальное, человек сбоку</span></div>
-      <input type="file" id="bgfile" accept="image/*" hidden>
+      <div class="drop" id="drop">Перетащи сюда фото или <b>нажми, чтобы выбрать</b><br><span class="hint" style="color:#6f6f78" id="drophint">лучше вертикальное, человек сбоку</span></div>
+      <input type="file" id="bgfile" accept="image/*" multiple hidden>
+      <div class="pool" id="pool"></div>
+      <div class="hint" id="poolhint" style="display:none"></div>
     </div>
 
     <div class="field">
@@ -269,6 +291,15 @@
     </div>
 
     <div class="field">
+      <label>Стиль карусели</label>
+      <div class="seg" id="stylesel">
+        <button data-v="classic" class="on">Классика</button>
+        <button data-v="plate">Плашка</button>
+      </div>
+      <div class="hint">Классика - текст прямо на фото, линии и иконки. Плашка - текст на тёмной плашке снизу, точки-индикатор, красная планка на обложке. Фото в «Плашке» не затемняется</div>
+    </div>
+
+    <div class="field only-classic">
       <label>Где на фото человек</label>
       <div class="seg" id="figside">
         <button data-v="right" class="on">Справа</button>
@@ -282,14 +313,17 @@
       <label>Элементы рамки</label>
       <div class="toggles">
         <label class="tg"><input type="checkbox" id="t_nick" checked> ник</label>
-        <label class="tg"><input type="checkbox" id="t_lines" checked> линии</label>
-        <label class="tg"><input type="checkbox" id="t_icons" checked> иконки share/save</label>
+        <label class="tg only-classic"><input type="checkbox" id="t_lines" checked> линии</label>
+        <label class="tg only-classic"><input type="checkbox" id="t_icons" checked> иконки share/save</label>
         <label class="tg"><input type="checkbox" id="t_arrow" checked> стрелка «дальше»</label>
-        <label class="tg"><input type="checkbox" id="t_counter" checked> счётчик N/total</label>
+        <label class="tg only-classic"><input type="checkbox" id="t_counter" checked> счётчик N/total</label>
+        <label class="tg only-plate"><input type="checkbox" id="t_dots" checked> точки-индикатор</label>
+        <label class="tg only-plate"><input type="checkbox" id="t_bar" checked> цветная полоска на обложке</label>
+        <label class="tg only-plate"><input type="checkbox" id="t_bw"> фото чёрно-белое</label>
       </div>
     </div>
 
-    <div class="field">
+    <div class="field only-classic">
       <div class="labelrow">
         <label id="darklabel">Затемнение фона</label>
         <span class="pct" id="darkpct">45%</span>
@@ -298,11 +332,38 @@
       <div class="hint" id="darkhint">Чем темнее фон, тем лучше читается текст. 0 - без затемнения</div>
     </div>
 
+    <details class="field only-plate fine" id="platefine">
+      <summary>Тонкая настройка плашки - открыть</summary>
+      <div class="hint" style="margin:0 0 14px">Значения по умолчанию сняты с эталона, менять не обязательно</div>
+      <div class="field">
+        <div class="labelrow">
+          <label>Плотность плашки</label>
+          <span class="pct" id="platealphapct">88%</span>
+        </div>
+        <input type="range" id="platealpha" min="50" max="100" value="88">
+        <div class="hint">100 - плашка полностью закрывает фото, ниже - фото чуть просвечивает сквозь неё. Цвет плашки подбирается сам: тёмная под светлый текст, светлая под тёмный</div>
+      </div>
+      <div class="field">
+        <div class="labelrow">
+          <label>Плашка обложки: высота</label>
+          <span class="pct" id="coverbottompct">74%</span>
+        </div>
+        <input type="range" id="coverbottom" min="55" max="90" value="74">
+        <div class="hint">Где стоит нижний край плашки на обложке. Выше - видно руки и стол, ниже - больше места лицу</div>
+      </div>
+      <div class="field" style="margin-bottom:6px">
+        <div class="toggles">
+          <label class="tg"><input type="checkbox" id="t_coverfit"> обложка: вписать фото целиком</label>
+        </div>
+        <div class="hint">Для узкого вертикального фото: оно встанет целиком на тёмную подложку с полями по бокам. Выключено - фото заполняет кадр</div>
+      </div>
+    </details>
+
     <div class="field">
-      <label>Цвет линий</label>
+      <label id="accentlabel">Цвет линий</label>
       <div class="colorrow">
         <input type="color" id="accent" value="#C9B37E">
-        <span class="hint" style="margin:0">верхняя и нижняя линии рамки</span>
+        <span class="hint" style="margin:0" id="accenthint">верхняя и нижняя линии рамки</span>
       </div>
     </div>
 
@@ -318,10 +379,10 @@
           <button type="button" data-c="#161616" style="background:#161616" title="Чёрный"></button>
         </div>
       </div>
-      <div class="hint">Весь текст слайдов сразу: заголовок, пункты, ник, счётчик. Берёшь тёмный цвет для светлого фото - подсветка под текстом и вуаль фона перевернутся сами, читаться будет так же</div>
+      <div class="hint" id="textcolorhint">Весь текст слайдов сразу: заголовок, пункты, ник, счётчик. Берёшь тёмный цвет для светлого фото - подсветка под текстом и вуаль фона перевернутся сами, читаться будет так же</div>
     </div>
 
-    <div class="field">
+    <div class="field only-classic">
       <div class="labelrow">
         <label>Длина верхней линии</label>
         <span class="pct" id="linelenpct">72%</span>
@@ -394,13 +455,14 @@
       <h2>Как собрать карусель за 5 минут</h2>
       <p>Слайды собираются прямо в твоём браузере, регистрация не обязательна. Если без кабинета - фото никуда не отправляется. Если завёл личный кабинет - фото и настройки хранятся в нём на сервере, чтобы не загружать заново</p>
       <h3>1. Загрузи своё фото</h3>
-      <p>Лучше вертикальное, где ты стоишь сбоку кадра, а не по центру, на тёмном или спокойном фоне - так текст читается лучше всего</p>
+      <p>Лучше вертикальное, где ты стоишь сбоку кадра, а не по центру, на тёмном или спокойном фоне - так текст читается лучше всего. Можно выбрать сразу несколько фото: под дропом появятся миниатюры. В «Классике» на всех слайдах стоит первое фото (нажми на другую миниатюру - она станет первой). В «Плашке» фото расходятся по слайдам по очереди, а поменять фото на конкретном слайде можно тапом по самому слайду. Крестик на миниатюре убирает фото из карусели</p>
       <h3>2. Впиши свой ник</h3>
       <p>Как в Instagram, например @anna.smm - он появится сверху на каждом слайде</p>
       <h3>3. Укажи, где ты на фото</h3>
       <p>Кнопки «Справа / Слева / Нет». Текст сам обходит твоё лицо - программа должна знать, с какой ты стороны</p>
       <h3>4. Настрой рамку под себя</h3>
       <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик. Пипетками меняешь цвет линий и цвет текста, ползунками - длину верхней линии (чтобы не ложилась на лицо) и затемнение фона (чем темнее, тем лучше читается текст). Ниже можно сменить шрифт слайдов и размеры текста в процентах - обложка и остальные слайды отдельно; если текст с выбранным размером не влезает, программа сама ужмёт его. Не уверен - оставь как есть</p>
+      <p><b>Про стиль «Плашка».</b> Переключатель «Стиль карусели» сверху: «Классика» - текст прямо на фото с линиями и иконками, «Плашка» - текст лежит на тёмной плашке внизу слайда, лицо сверху остаётся свободным, внизу точки-индикатор и стрелка «>>», на обложке красная планка слева. Фото в этом стиле не затемняется, поэтому годится и светлое. Галочка «фото чёрно-белое» делает все слайды монохромными, как у многих авторов. Тонкие настройки (плотность плашки, высота плашки на обложке, «вписать фото целиком» для узких вертикальных снимков) спрятаны под кнопкой «Тонкая настройка плашки» - трогать их не обязательно, значения сняты с эталона</p>
       <p><b>Про цвет текста.</b> Пять кружков рядом с пипеткой - готовые варианты (белый, кремовый, золото, серый, чёрный), пипетка даёт любой свой. Цвет ложится сразу на весь текст: обложку, пункты, ник и счётчик. Взял тёмный текст под светлое фото - программа сама перевернёт подсветку под буквами и вуаль на фоне (ползунок станет «Осветление фона»), так что читаться будет одинаково хорошо</p>
       <h3>5. Вставь текст поста</h3>
       <ul>
@@ -465,6 +527,16 @@
       </div>
     </div>
   </div>
+  <!-- ВЫБОР ФОТО ДЛЯ СЛАЙДА (стиль «Плашка», когда фото несколько) -->
+  <div class="helpov" id="pickov">
+    <div class="helpbox">
+      <button class="helpclose" id="pickclose" aria-label="Закрыть">✕</button>
+      <h2 id="picktitle">Фото для слайда</h2>
+      <p class="hint">Нажми на фото - оно встанет на этот слайд. Остальные слайды не меняются</p>
+      <div class="cabgrid pickgrid" id="pickgrid"></div>
+      <button class="btn ghost" id="pickauto" style="margin-top:16px;width:100%">Вернуть порядок: фото по слайдам по очереди</button>
+    </div>
+  </div>
   <div class="themesw">
     <button id="th_light" title="Светлая тема">☀️</button>
     <button id="th_dark" title="Тёмная тема" class="on">🌙</button>
@@ -479,12 +551,83 @@ const ZONE_TOP=170, ZONE_BOTTOM=1190, FACE_BOTTOM=440;
 const LEFT=96;
 
 const el = id => document.getElementById(id);
-let bgImg = null;
+/* ---------- пул фото ----------
+   pool[0] = главное фото: фон всех слайдов в классике и слайдов без своего фото в плашке.
+   В плашке фото расходятся по слайдам по порядку (слайд i -> pool[i % N]), slideMap[i] = ручной выбор для слайда */
+let pool = [];        // [{img, key}]  key = id фото кабинета или 'local:N'
+let slideMap = {};    // index слайда -> index в pool (ручной выбор)
+let bgImg = null;     // = pool[0]?.img, старое имя оставлено - на нём завязан весь код классики
+const POOL_MAX = 20;
+let localSeq = 0;
+function syncMain(){ bgImg = pool.length ? pool[0].img : null; }
+function photoFor(i){
+  if(!pool.length) return null;
+  if(state.style!=='plate') return pool[0].img;
+  const m=slideMap[i];
+  if(typeof m==='number' && pool[m]) return pool[m].img;
+  return pool[i % pool.length].img;
+}
+/* ужать фото при входе в пул: телефон с 10 фото по 5000px ляжет по памяти */
+function downscale(img, maxSide){
+  const k=Math.min(1, maxSide/Math.max(img.width,img.height));
+  if(k>=1) return img;
+  const cv=document.createElement('canvas'); cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+  return cv;
+}
+function poolAdd(img, key, toFront, file){
+  const ex=pool.findIndex(p=>p.key===key);
+  if(ex>=0){ if(toFront && ex>0){ const [p]=pool.splice(ex,1); pool.unshift(p); } syncMain(); renderPool(); return toFront?0:ex; }
+  if(pool.length>=POOL_MAX){ toast('Максимум '+POOL_MAX+' фото в одной карусели'); return -1; }
+  const entry={img:downscale(img,2000), key, file:file||null}; // file хранится, чтобы доложить в кабинет при регистрации
+  if(toFront) pool.unshift(entry); else pool.push(entry);
+  syncMain(); renderPool(); return toFront?0:pool.length-1;
+}
+function poolRemove(idx){
+  pool.splice(idx,1);
+  // ручные привязки сдвигаются вместе с пулом
+  const nm={}; Object.keys(slideMap).forEach(i=>{ const m=slideMap[i]; if(m===idx) return; nm[i]= m>idx ? m-1 : m; }); slideMap=nm;
+  syncMain(); renderPool(); updDrop(); rerender();
+}
+function updDrop(){
+  const d=el('drop');
+  if(!pool.length){ d.innerHTML='Перетащи сюда фото или <b>нажми, чтобы выбрать</b><br><span class="hint" style="color:#6f6f78" id="drophint"></span>'; updStyleUI(); return; }
+  d.innerHTML = (pool.length===1 ? 'Фото загружено ✓' : 'Фото: '+pool.length+' ✓') + ' <b>добавить ещё</b>';
+}
+function renderPool(){
+  const box=el('pool'); box.innerHTML='';
+  pool.forEach((p,i)=>{
+    const d=document.createElement('div'); d.className='pthumb'+(i===0?' main':'');
+    d.title = i===0 ? 'Главное фото' : 'Сделать главным (первым)';
+    const im=document.createElement('canvas'); im.width=56; im.height=70;
+    const k=Math.max(56/p.img.width,70/p.img.height), dw=p.img.width*k, dh=p.img.height*k;
+    im.getContext('2d').drawImage(p.img,(56-dw)/2,(70-dh)/2,dw,dh);
+    d.appendChild(im);
+    const n=document.createElement('div'); n.className='pnum'; n.textContent=(i+1); d.appendChild(n);
+    const x=document.createElement('button'); x.className='pdel'; x.textContent='✕'; x.title='Убрать из карусели';
+    x.onclick=ev=>{ ev.stopPropagation(); poolRemove(i); };
+    d.appendChild(x);
+    d.onclick=()=>{ if(i>0){ const [q]=pool.splice(i,1); pool.unshift(q); slideMap={}; syncMain(); renderPool(); rerender(); } };
+    box.appendChild(d);
+  });
+  const h=el('poolhint');
+  if(pool.length>1){
+    h.style.display='block';
+    h.textContent = state.style==='plate'
+      ? 'Фото расходятся по слайдам по порядку. Поменять фото на конкретном слайде - нажми на слайд. Первое фото = главное'
+      : 'В стиле «Классика» на всех слайдах стоит первое фото. Нажми на другое - оно станет первым. В стиле «Плашка» фото разойдутся по слайдам';
+  } else h.style.display='none';
+}
 let state = {
   nick:'@YOUR.NICK', figside:'right', accent:'#C9B37E', lineLen:72, dark:45,
   nickOn:true, linesOn:true, iconsOn:true, arrowOn:true, counterOn:true,
-  font:'Montserrat', fontScale:100, coverScale:100, textColor:'#FFFFFF'
+  font:'Montserrat', fontScale:100, coverScale:100, textColor:'#FFFFFF',
+  // стиль «Плашка»: текст на тёмной плашке снизу (эталон - карусели panchenko_sport)
+  style:'classic', plateAlpha:88, coverBottom:74, coverFit:false,
+  bw:false, dotsOn:true, barOn:true
 };
+// акцент по умолчанию у стилей разный: золото линий в классике, красная планка и точка в плашке
+const STYLE_ACCENT={classic:'#C9B37E', plate:'#D5282E'};
 
 /* ---------- цвет текста: вторичные элементы = тот же цвет, приглушённый к фону ---------- */
 function hexRgb(h){
@@ -652,18 +795,153 @@ function layoutPoint(ctx, slide, scaleFont){
   return res;
 }
 
+/* ---------- чёрно-белая копия фото: считается один раз на картинку, без ctx.filter (Safari до 18 не умеет) ---------- */
+const grayCache = new WeakMap();
+function grayOf(img){
+  if(grayCache.has(img)) return grayCache.get(img);
+  const cv=document.createElement('canvas'); cv.width=img.width; cv.height=img.height;
+  const c=cv.getContext('2d'); c.drawImage(img,0,0);
+  try{
+    const id=c.getImageData(0,0,cv.width,cv.height), d=id.data;
+    for(let i=0;i<d.length;i+=4){ const y=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)|0; d[i]=d[i+1]=d[i+2]=y; }
+    c.putImageData(id,0,0);
+  }catch(e){ /* tainted canvas - оставляем цвет */ }
+  grayCache.set(img, cv); return cv;
+}
+
+/* ---------- фон слайда: cover-fit (заполнить кадр) или contain-fit на подложку (обложка «Плашки») ---------- */
+function drawBackground(ctx, img, fit){
+  if(!img){ ctx.fillStyle='#232325'; ctx.fillRect(0,0,W,H); return; }
+  const src = (state.style==='plate' && state.bw) ? grayOf(img) : img;
+  if(fit==='contain'){
+    ctx.fillStyle='#151515'; ctx.fillRect(0,0,W,H);
+    const k = Math.min(W/img.width, H/img.height);
+    const dw=img.width*k, dh=img.height*k;
+    ctx.drawImage(src, (W-dw)/2, (H-dh)/2, dw, dh);
+  } else {
+    const k = Math.max(W/img.width, H/img.height);
+    const dw=img.width*k, dh=img.height*k;
+    ctx.drawImage(src, (W-dw)/2, (H-dh)/2, dw, dh);
+  }
+}
+
+/* ---------- стиль «Плашка»: геометрия снята с эталона (1080x1350) ---------- */
+const PL = {
+  x:48, w:984, r:14, bottom:1195, padL:32, padR:48, padT:36, padB:36,
+  minTop:560,            // выше плашка не поднимается - лицо остаётся свободным, текст ужимается
+  head:46, headLH:60,    // заголовок пункта / финал
+  body:40, bodyLH:52, gap:12,
+  cover:48, coverLH:62, barW:8, barInset:4, coverTextX:44,
+  dotD:10, dotPitch:26, dotY:1275,
+  arrowX:887, arrowY:1247, arrowSize:40,
+  nickSize:30, nickX:48, nickY:67
+};
+function roundRectPath(ctx,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+function plateRgba(){
+  // цвет плашки не выбирается руками: под светлый текст чёрная, под тёмный - белая (иначе чёрное на чёрном)
+  const [r,g,b]=hexRgb(isLightText()?'#000000':'#FFFFFF');
+  return 'rgba('+r+','+g+','+b+','+((state.plateAlpha||88)/100).toFixed(2)+')';
+}
+/* раскладка текста плашки: возвращает строки с размерами; ужимает шрифт, пока блок не влезет в maxH */
+function layoutPlateText(ctx, parts, maxW, maxH){
+  // parts: [{text, size, lh, weight}], между частями зазор PL.gap
+  let k=1, out, totalH;
+  for(let s=0;s<10;s++){
+    out=[]; totalH=0;
+    parts.forEach((p,pi)=>{
+      const size=Math.round(p.size*k), lh=Math.round(p.lh*k);
+      ctx.font=`${p.weight} ${size}px ${fontFam()}`;
+      const lines=wrapByWidth(ctx, p.text, maxW);
+      if(pi>0) totalH+=Math.round(PL.gap*k);
+      lines.forEach(t=>{ out.push({t,size,lh,weight:p.weight,part:pi,y:totalH}); totalH+=lh; });
+    });
+    if(totalH<=maxH) break;
+    k*=0.95;
+  }
+  return {items:out, totalH};
+}
+function renderPlate(ctx, slide, index, total){
+  const acc=state.accent, light=isLightText();
+  const shadow=()=>{ ctx.shadowColor = light ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.55)'; ctx.shadowBlur=12; ctx.shadowOffsetY=2; };
+  const noShadow=()=>{ ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0; };
+  ctx.textBaseline='alphabetic';
+
+  // ник: как написан, без капса и разрядки, лёгкая тень (плашки под ним нет)
+  if(state.nickOn && state.nick){
+    shadow(); ctx.fillStyle=state.textColor||'#ffffff'; ctx.font=`500 ${PL.nickSize}px Montserrat, sans-serif`;
+    ctx.textAlign='left'; ctx.fillText(state.nick, PL.nickX, PL.nickY); noShadow();
+  }
+
+  // текст плашки
+  const isCover = slide.kind==='cover', isCta = slide.kind==='cta';
+  const us=(state.fontScale||100)/100, cs=(state.coverScale||100)/100;
+  let parts;
+  if(isCover) parts=[{text:slide.title, size:PL.cover*cs, lh:PL.coverLH*cs, weight:'700'}];
+  else if(isCta) parts=[{text:slide.title, size:PL.head*us, lh:PL.headLH*us, weight:'700'}];
+  else {
+    parts=[{text:(slide.num?slide.num+'. ':'')+slide.title, size:PL.head*us, lh:PL.headLH*us, weight:'700'}];
+    if(slide.body) parts.push({text:slide.body, size:PL.body*us, lh:PL.bodyLH*us, weight:'400'});
+  }
+  const textX = PL.x + (isCover && state.barOn ? PL.coverTextX : PL.padL);
+  const maxW = PL.x + PL.w - PL.padR - textX;
+  const bottom = isCover ? Math.round(H*(state.coverBottom||74)/100) : PL.bottom;
+  const maxH = bottom - PL.minTop - PL.padT - PL.padB;
+  const lay = layoutPlateText(ctx, parts, maxW, maxH);
+  const plateH = PL.padT + lay.totalH + PL.padB;
+  const top = bottom - plateH;
+
+  // плашка
+  ctx.fillStyle=plateRgba(); roundRectPath(ctx, PL.x, top, PL.w, plateH, PL.r); ctx.fill();
+  // планка обложки: слева внутри плашки, на всю высоту
+  if(isCover && state.barOn){
+    ctx.fillStyle=acc; roundRectPath(ctx, PL.x+PL.barInset, top, PL.barW, plateH, PL.barW/2); ctx.fill();
+  }
+  // строки
+  ctx.textAlign='left';
+  for(const it of lay.items){
+    ctx.font=`${it.weight} ${it.size}px ${fontFam()}`;
+    ctx.fillStyle = it.weight==='400' ? soften(.95) : (state.textColor||'#ffffff');
+    ctx.fillText(it.t, textX, top + PL.padT + it.y + it.size*0.82);
+  }
+
+  // стрелка «>>» - на всех, кроме последнего
+  if(state.arrowOn && index<total-1){
+    shadow(); ctx.fillStyle=state.textColor||'#ffffff'; ctx.font=`500 ${PL.arrowSize}px Montserrat, sans-serif`;
+    ctx.textAlign='right'; ctx.fillText('>>', PL.arrowX, PL.arrowY); ctx.textAlign='left'; noShadow();
+  }
+  // точки-индикатор: по числу слайдов, активная - акцентом
+  if(state.dotsOn && total>1){
+    const x0 = W/2 - (total-1)*PL.dotPitch/2;
+    shadow();
+    for(let i=0;i<total;i++){
+      ctx.fillStyle = i===index ? acc : (state.textColor||'#ffffff');
+      ctx.beginPath(); ctx.arc(x0+i*PL.dotPitch, PL.dotY, PL.dotD/2, 0, Math.PI*2); ctx.fill();
+    }
+    noShadow();
+  }
+}
+
 /* ---------- рендер одного слайда на переданный canvas в полном размере ---------- */
 function renderSlide(canvas, slide, index, total){
   canvas.width=W; canvas.height=H;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,W,H);
 
+  if(state.style==='plate'){
+    drawBackground(ctx, photoFor(index), (slide.kind==='cover' && state.coverFit) ? 'contain' : 'cover');
+    renderPlate(ctx, slide, index, total);
+    return;
+  }
+
   // фон cover-fit
-  if(bgImg){
-    const k = Math.max(W/bgImg.width, H/bgImg.height);
-    const dw=bgImg.width*k, dh=bgImg.height*k;
-    ctx.drawImage(bgImg, (W-dw)/2, (H-dh)/2, dw, dh);
-  } else { ctx.fillStyle='#232325'; ctx.fillRect(0,0,W,H); }
+  drawBackground(ctx, bgImg, 'cover');
 
   // вуаль для читаемости текста: уровень с ползунка (45 = прежний вид)
   // светлый текст -> тёмная вуаль; тёмный текст -> светлая, иначе чёрные буквы утонут в затемнении
@@ -784,8 +1062,15 @@ function rerender(){
     const cap=document.createElement('div'); cap.className='cap';
     cap.textContent = s.kind==='cover'?'обложка':(s.kind==='cta'?'финал':(s.num?'пункт '+s.num:'слайд'));
     const dl=document.createElement('button'); dl.className='dl'; dl.textContent='скачать';
-    dl.onclick=()=>downloadOne(i);
+    dl.onclick=ev=>{ ev.stopPropagation(); downloadOne(i); };
     card.appendChild(cv); card.appendChild(cap); card.appendChild(dl);
+    // плашка + несколько фото: тап по слайду = выбрать для него фото
+    if(state.style==='plate' && pool.length>1){
+      card.classList.add('pickable'); card.title='Нажми, чтобы выбрать фото для этого слайда';
+      const cur=(typeof slideMap[i]==='number' && pool[slideMap[i]]) ? slideMap[i] : (i % pool.length);
+      const ph=document.createElement('div'); ph.className='ph'; ph.textContent='фото '+(cur+1); card.appendChild(ph);
+      card.onclick=()=>openPicker(i);
+    }
     cont.appendChild(card);
   });
   if(bootDone) scheduleSave();
@@ -876,29 +1161,63 @@ async function shareAll(){
 /* ---------- события ---------- */
 let lastFile=null; // последний выбранный файл фона: нужен, чтобы доложить его в кабинет при регистрации
 function loadFile(file){
-  if(!file) return;
-  const img=new Image();
-  img.onload=()=>{
-    lastFile=file; bgImg=img;
-    el('drop').innerHTML='Фон загружен ✓ <b>заменить</b>';
-    rerender();
-    if(kabToken) uploadPhoto(file,true)
-      .then(()=>toast('Фото сохранено в кабинет ✓'))
-      .catch(e=>toast((e&&e.error)||'Не удалось сохранить фото в кабинет'));
-  };
-  img.onerror=()=>{
-    URL.revokeObjectURL(img.src);
-    el('drop').innerHTML='Не получилось открыть файл - нужен JPG или PNG. <b>Попробовать ещё раз</b>';
-    toast('Это не похоже на фото - выбери JPG или PNG');
-  };
-  img.src=URL.createObjectURL(file);
-  el('drop').innerHTML='Открываю фото…';
+  return new Promise(res=>{
+    if(!file) return res(false);
+    const img=new Image();
+    img.onload=()=>{
+      URL.revokeObjectURL(img.src);
+      lastFile=file;
+      const key='local:'+(++localSeq);
+      const idx=poolAdd(img, key, pool.length===0, file);
+      if(idx<0) return res(false);
+      updDrop(); rerender();
+      if(kabToken) uploadPhoto(file, idx===0)
+        .then(id=>{ const p=pool.find(q=>q.key===key); if(p) p.key=id; scheduleSave(); toast('Фото сохранено в кабинет ✓'); })
+        .catch(e=>toast((e&&e.error)||'Не удалось сохранить фото в кабинет'));
+      res(true);
+    };
+    img.onerror=()=>{
+      URL.revokeObjectURL(img.src);
+      el('drop').innerHTML='Не получилось открыть файл - нужен JPG или PNG. <b>Попробовать ещё раз</b>';
+      toast('Это не похоже на фото - выбери JPG или PNG');
+      res(false);
+    };
+    img.src=URL.createObjectURL(file);
+    el('drop').innerHTML='Открываю фото…';
+  });
+}
+async function loadFiles(list){
+  const files=[...(list||[])].filter(f=>f&&f.type&&f.type.startsWith('image/'));
+  if(!files.length) return;
+  for(const f of files){ await loadFile(f); }
 }
 el('drop').onclick=()=>el('bgfile').click();
-el('bgfile').onchange=e=>loadFile(e.target.files[0]);
+el('bgfile').onchange=e=>{ loadFiles(e.target.files); e.target.value=''; };
 ['dragover','dragenter'].forEach(ev=>el('drop').addEventListener(ev,e=>{e.preventDefault();el('drop').style.borderColor=state.accent}));
 ['dragleave','drop'].forEach(ev=>el('drop').addEventListener(ev,e=>{e.preventDefault();el('drop').style.borderColor=''}));
-el('drop').addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+el('drop').addEventListener('drop',e=>{ loadFiles(e.dataTransfer.files); });
+
+/* ---------- выбор фото для конкретного слайда (плашка) ---------- */
+let pickIndex=-1;
+function openPicker(i){
+  pickIndex=i;
+  el('picktitle').textContent='Фото для слайда '+(i+1);
+  const g=el('pickgrid'); g.innerHTML='';
+  const cur = (typeof slideMap[i]==='number' && pool[slideMap[i]]) ? slideMap[i] : (i % pool.length);
+  pool.forEach((p,pi)=>{
+    const d=document.createElement('div'); d.className='thumb'+(pi===cur?' on':'');
+    const im=document.createElement('canvas'); im.width=96; im.height=120;
+    const k=Math.max(96/p.img.width,120/p.img.height), dw=p.img.width*k, dh=p.img.height*k;
+    im.getContext('2d').drawImage(p.img,(96-dw)/2,(120-dh)/2,dw,dh);
+    d.appendChild(im);
+    d.onclick=()=>{ slideMap[i]=pi; el('pickov').classList.remove('open'); rerender(); toast('Фото на слайде '+(i+1)+' заменено ✓'); };
+    g.appendChild(d);
+  });
+  el('pickov').classList.add('open');
+}
+el('pickclose').onclick=()=>el('pickov').classList.remove('open');
+el('pickov').addEventListener('click',e=>{ if(e.target===el('pickov')) el('pickov').classList.remove('open'); });
+el('pickauto').onclick=()=>{ slideMap={}; el('pickov').classList.remove('open'); rerender(); toast('Фото снова идут по порядку ✓'); };
 
 el('nick').oninput=e=>{ state.nick=e.target.value; rerender(); };
 el('text').oninput=rerender;
@@ -919,15 +1238,45 @@ function setTextColor(v){ state.textColor=v; updTextColorUI(); rerender(); }
 el('textcolor').oninput=e=>setTextColor(e.target.value);
 document.querySelectorAll('#swatches button').forEach(b=>b.onclick=()=>setTextColor(b.dataset.c));
 updTextColorUI(); // подсветить активный кружок на старте, до применения настроек кабинета
-function updPct(){ el('darkpct').textContent=el('darklvl').value+'%'; el('linelenpct').textContent=el('linelen').value+'%'; el('fontpct').textContent=el('fontsize').value+'%'; el('coverpct').textContent=el('coversize').value+'%'; }
+function updPct(){ el('darkpct').textContent=el('darklvl').value+'%'; el('linelenpct').textContent=el('linelen').value+'%'; el('fontpct').textContent=el('fontsize').value+'%'; el('coverpct').textContent=el('coversize').value+'%';
+  el('platealphapct').textContent=el('platealpha').value+'%'; el('coverbottompct').textContent=el('coverbottom').value+'%'; }
 el('linelen').oninput=e=>{ state.lineLen=parseInt(e.target.value); updPct(); rerender(); };
 document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#figside button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); state.figside=b.dataset.v; rerender();
 });
-const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn'};
+const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn',
+  t_dots:'dotsOn',t_bar:'barOn',t_bw:'bw',t_coverfit:'coverFit'};
 Object.keys(map).forEach(id=>el(id).onchange=e=>{ state[map[id]]=e.target.checked; rerender(); });
 el('darklvl').oninput=e=>{ state.dark=parseInt(e.target.value); updPct(); rerender(); };
+
+/* ---------- стиль карусели: классика / плашка ---------- */
+function updStyleUI(){
+  const s=state.style==='plate'?'plate':'classic';
+  document.body.dataset.style=s;
+  document.querySelectorAll('#stylesel button').forEach(b=>b.classList.toggle('on', b.dataset.v===s));
+  el('accentlabel').textContent = s==='plate' ? 'Акцентный цвет' : 'Цвет линий';
+  el('accenthint').textContent = s==='plate' ? 'полоска на обложке и активная точка' : 'верхняя и нижняя линии рамки';
+  const dh=el('drophint'); if(dh) dh.textContent = s==='plate' ? 'лучше вертикальное, лицо в верхней половине кадра. Можно несколько - по одному на слайд' : 'лучше вертикальное, человек сбоку';
+  el('textcolorhint').textContent = s==='plate'
+    ? 'Весь текст слайдов сразу: обложка, пункты, ник, точки. Возьмёшь тёмный цвет - плашка сама станет светлой'
+    : 'Весь текст слайдов сразу: заголовок, пункты, ник, счётчик. Берёшь тёмный цвет для светлого фото - подсветка под текстом и вуаль фона перевернутся сами, читаться будет так же';
+  if(typeof renderPool==='function') renderPool();
+}
+function setStyle(v){
+  const prev=state.style==='plate'?'plate':'classic';
+  if(v===prev) return;
+  // акцент не трогали (стоит дефолт прежнего стиля) - подставить дефолт нового: золото линий / красная планка
+  if((state.accent||'').toUpperCase()===STYLE_ACCENT[prev].toUpperCase()){
+    state.accent=STYLE_ACCENT[v]; el('accent').value=state.accent;
+    document.documentElement.style.setProperty('--accent',state.accent);
+  }
+  state.style=v; updStyleUI(); rerender();
+}
+document.querySelectorAll('#stylesel button').forEach(b=>b.onclick=()=>setStyle(b.dataset.v));
+el('platealpha').oninput=e=>{ state.plateAlpha=parseInt(e.target.value); updPct(); rerender(); };
+el('coverbottom').oninput=e=>{ state.coverBottom=parseInt(e.target.value); updPct(); rerender(); };
+updStyleUI();
 el('fontsize').oninput=e=>{ state.fontScale=parseInt(e.target.value); updPct(); rerender(); };
 el('coversize').oninput=e=>{ state.coverScale=parseInt(e.target.value); updPct(); rerender(); };
 el('fontsel').onchange=e=>{ state.font=e.target.value; rerender(); ensureFont(state.font).then(rerender); };
@@ -989,7 +1338,11 @@ function settingsSnapshot(){
   return {nick:state.nick,figside:state.figside,accent:state.accent,lineLen:state.lineLen,dark:state.dark,
     nickOn:state.nickOn,linesOn:state.linesOn,iconsOn:state.iconsOn,arrowOn:state.arrowOn,counterOn:state.counterOn,
     font:state.font,fontScale:state.fontScale,coverScale:state.coverScale,textColor:state.textColor,
-    templates:templates,lastPhotoId:state.lastPhotoId||''};
+    style:state.style||'classic',plateAlpha:state.plateAlpha,coverBottom:state.coverBottom,
+    coverFit:!!state.coverFit,bw:!!state.bw,dotsOn:state.dotsOn,barOn:state.barOn,
+    // пул фото кабинета по порядку (локальные, ещё не долетевшие в кабинет, не входят)
+    photoIds: pool.length ? pool.map(p=>p.key).filter(k=>!String(k).startsWith('local:')).join(',') : (state.photoIds||''),
+    templates:templates,lastPhotoId:(pool.length && !String(pool[0].key).startsWith('local:')) ? pool[0].key : (state.lastPhotoId||'')};
 }
 let putFailNoted=false, putRetryT=null;
 function notePutFail(e){
@@ -1000,7 +1353,7 @@ function notePutFail(e){
 function scheduleSave(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
-    try{ localStorage.setItem('kab_local',JSON.stringify({...settingsSnapshot(),text:el('text').value})); }catch(e){}
+    try{ localStorage.setItem('kab_local',JSON.stringify({...settingsSnapshot(),text:el('text').value,slideMap})); }catch(e){}
     const snap=JSON.stringify(settingsSnapshot());
     // на сервер - только если серверное состояние известно и реально поменялось: бережём лимит записей KV
     if(kabToken&&lastSavedSnap!==null&&snap!==lastSavedSnap)
@@ -1023,7 +1376,7 @@ function addMissingTemplates(extra){
 /* немедленная отправка (для шаблонов - без дебаунса и без вранья в тосте) */
 async function flushSave(){
   clearTimeout(saveTimer);
-  try{ localStorage.setItem('kab_local',JSON.stringify({...settingsSnapshot(),text:el('text').value})); }catch(e){}
+  try{ localStorage.setItem('kab_local',JSON.stringify({...settingsSnapshot(),text:el('text').value,slideMap})); }catch(e){}
   if(!kabToken) return {ok:true};
   try{
     if(lastSavedSnap===null){
@@ -1072,8 +1425,12 @@ function applySettings(s){
   Object.keys(map).forEach(id=>{ const k=map[id];
     if(typeof s[k]==='boolean'){ state[k]=s[k]; el(id).checked=s[k]; } });
   if(typeof s.textColor==='string'&&/^#[0-9a-f]{6}$/i.test(s.textColor)) state.textColor=s.textColor;
+  if(s.style==='plate'||s.style==='classic') state.style=s.style;
+  if(typeof s.plateAlpha==='number'&&s.plateAlpha>=50&&s.plateAlpha<=100){ state.plateAlpha=s.plateAlpha; el('platealpha').value=s.plateAlpha; }
+  if(typeof s.coverBottom==='number'&&s.coverBottom>=55&&s.coverBottom<=90){ state.coverBottom=s.coverBottom; el('coverbottom').value=s.coverBottom; }
   if(s.lastPhotoId!==undefined) state.lastPhotoId=s.lastPhotoId;
-  updPct(); updTextColorUI();
+  if(typeof s.photoIds==='string') state.photoIds=s.photoIds.slice(0,1000);
+  updPct(); updTextColorUI(); updStyleUI();
 }
 
 /* сжатие перед загрузкой: длинная сторона 1600, JPEG - иначе сожжём хранилище */
@@ -1102,14 +1459,24 @@ async function uploadPhoto(file,setLast){
   return r.id;
 }
 
-async function setBgFromPhoto(id){
+/* фото из кабинета: toFront=true - становится главным (первым), false - добавляется в конец пула */
+async function setBgFromPhoto(id, toFront=true){
   try{
     if(!photoCache[id]){ const r=await api('/api/photos/'+id); photoCache[id]=URL.createObjectURL(await r.blob()); }
-    const img=new Image();
-    img.onload=()=>{ bgImg=img; el('drop').innerHTML='Фон из кабинета ✓ <b>заменить</b>';
-      state.lastPhotoId=id; rerender(); };
-    img.src=photoCache[id];
+    await new Promise((res,rej)=>{
+      const img=new Image();
+      img.onload=()=>{ poolAdd(img, id, toFront); if(toFront) state.lastPhotoId=id; updDrop(); rerender(); scheduleSave(); res(); };
+      img.onerror=rej;
+      img.src=photoCache[id];
+    });
   }catch(e){ toast((e&&e.error)||'Не удалось загрузить фото'); }
+}
+/* восстановить пул кабинета после входа/перезагрузки: главное фото первым, остальные по порядку */
+async function restorePool(){
+  if(pool.length||!kabToken) return;
+  const ids=String(state.photoIds||'').split(',').filter(id=>id&&kabPhotos.some(p=>p.id===id));
+  if(!ids.length && state.lastPhotoId && kabPhotos.some(p=>p.id===state.lastPhotoId)) ids.push(state.lastPhotoId);
+  for(const id of ids){ await setBgFromPhoto(id, false); }
 }
 
 function renderGallery(){
@@ -1141,6 +1508,7 @@ async function delPhoto(id){
     kabPhotos=kabPhotos.filter(p=>p.id!==id);
     if(photoCache[id]){ URL.revokeObjectURL(photoCache[id]); delete photoCache[id]; }
     if(state.lastPhotoId===id){ state.lastPhotoId=''; scheduleSave(); }
+    const pi=pool.findIndex(p=>p.key===id); if(pi>=0) poolRemove(pi);
     renderGallery();
   }catch(e){ toast((e&&e.error)||'Не удалось удалить'); }
 }
@@ -1164,6 +1532,7 @@ function renderTemplates(){
 function applyTemplate(t){
   const s={...t}; delete s.name; delete s.lastPhotoId; delete s.templates;
   if(!s.textColor) s.textColor='#FFFFFF'; // шаблоны, сохранённые до появления цвета текста, были белыми
+  if(!s.style) s.style='classic';        // шаблоны до появления стилей - классика
   applySettings(s);
   if(t.lastPhotoId&&kabPhotos.some(p=>p.id===t.lastPhotoId)) setBgFromPhoto(t.lastPhotoId);
   rerender(); scheduleSave(); closeCab(); toast('Шаблон «'+(t.name||'')+'» применён ✓');
@@ -1199,7 +1568,13 @@ async function kabAuth(mode){
     if(mode==='register'){
       // настройки ушли прямо в теле регистрации - отдельный PUT не нужен (бережём записи KV)
       kabPhotos=[]; lastSavedSnap=JSON.stringify(settingsSnapshot());
-      if(lastFile){ try{ await uploadPhoto(lastFile,true); toast('Твоё фото уже в кабинете ✓'); }catch(e){} }
+      // фото, загруженные до регистрации, докладываем в кабинет по порядку пула
+      let up=0;
+      for(const p of pool.slice()){
+        if(!p.file) continue;
+        try{ const id=await uploadPhoto(p.file, pool.indexOf(p)===0); p.key=id; up++; }catch(e){ break; }
+      }
+      if(up){ scheduleSave(); toast(up===1?'Твоё фото уже в кабинете ✓':'Твои фото уже в кабинете ✓'); }
     } else {
       const localTpls=templates.slice(); // шаблоны, жившие на этом устройстве до входа
       const me=await api('/api/me');
@@ -1208,7 +1583,7 @@ async function kabAuth(mode){
       // локальные шаблоны, которых нет на сервере, не теряем - доклеиваем и досылаем
       if(addMissingTemplates(localTpls)){ renderTemplates(); scheduleSave(); }
       rerender();
-      if(state.lastPhotoId&&kabPhotos.some(p=>p.id===state.lastPhotoId)&&!bgImg) setBgFromPhoto(state.lastPhotoId);
+      restorePool();
     }
     updateCabBtn(); showCabView();
   }catch(e){ cabErr((e&&e.error)||'Не получилось - попробуй ещё раз'); }
@@ -1263,7 +1638,8 @@ el('cabfile').onchange=async e=>{
 (async function kabBoot(){
   try{
     const loc=JSON.parse(localStorage.getItem('kab_local')||'null');
-    if(loc){ applySettings(loc); if(loc.text&&!el('text').value) el('text').value=loc.text; }
+    if(loc){ applySettings(loc); if(loc.text&&!el('text').value) el('text').value=loc.text;
+      if(loc.slideMap&&typeof loc.slideMap==='object') slideMap=loc.slideMap; }
   }catch(e){}
   if(kabToken){
     const preSnap=JSON.stringify(settingsSnapshot()); // защита от гонки: юзер мог начать работать, пока летит /api/me
@@ -1281,7 +1657,7 @@ el('cabfile').onchange=async e=>{
       }
       renderGallery();
       if(el('cabov').classList.contains('open')) showCabView();
-      if(state.lastPhotoId&&!bgImg&&kabPhotos.some(p=>p.id===state.lastPhotoId)) setBgFromPhoto(state.lastPhotoId);
+      restorePool();
     }catch(e){ if(e&&e.error) toast(e.error); /* оффлайн или сессия истекла - работаем как гость */ }
   }
   updateCabBtn(); bootDone=true; rerender();
