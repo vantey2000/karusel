@@ -214,6 +214,9 @@
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
   .thumb .thumbdel{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:50%;border:none;
     background:rgba(0,0,0,.65);color:#fff;font-size:11px;cursor:pointer;line-height:1}
+  .thumb.inpool{border:2px solid var(--accent)}
+  .thumb .tnum{position:absolute;left:5px;top:5px;min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:var(--accent);
+    color:#1a1a1a;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
   .addtile{display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--accent);
     border:1.5px dashed #3a3a42;background:transparent}
   .cabrow{display:flex;gap:10px;margin-top:14px}
@@ -283,6 +286,10 @@
       <input type="file" id="bgfile" accept="image/*" multiple hidden>
       <div class="pool" id="pool"></div>
       <div class="hint" id="poolhint" style="display:none"></div>
+      <div id="setrow" style="display:none;margin-top:10px">
+        <select id="setsel"></select>
+        <div class="hint">Наборы фото из кабинета. Выбери набор - фото карусели заменятся на него</div>
+      </div>
     </div>
 
     <div class="field">
@@ -475,7 +482,7 @@
       <h3>6. Выложи</h3>
       <p>С телефона: «Поделиться» → в меню выбери Instagram → слайды падают прямо в новый пост. С компьютера: «Скачать ZIP» - один архив со всеми слайдами</p>
       <h3>7. Личный кабинет (по желанию)</h3>
-      <p>Кнопка «Личный кабинет» → «Создать кабинет» (email и пароль от 8 знаков). Дальше всё само: фото, которые ты загружаешь, сохраняются в кабинет, настройки рамки запоминаются. Зашёл в другой раз или с другого устройства - твой фон уже стоит, ник и рамка на месте. В кабинете до 20 фото: нажми на любое - оно станет фоном. Там же «Мои шаблоны»: сохрани текущий вид (фото + шрифт + рамка) под именем и переключайся между шаблонами в один клик</p>
+      <p>Кнопка «Личный кабинет» → «Создать кабинет» (email и пароль от 8 знаков). Дальше всё само: фото, которые ты загружаешь, сохраняются в кабинет, настройки рамки запоминаются. Зашёл в другой раз или с другого устройства - твой фон уже стоит, ник и рамка на месте. В кабинете до 40 фото: нажми на любое - оно добавится в карусель, ещё раз - уберётся. «Наборы фото»: собрал 8 снимков под одну карусель - сохрани их как набор с именем, и для каждой следующей карусели выбирай нужный набор из списка прямо под фото, не перебирая всё вручную. «Мои шаблоны»: сохрани текущий вид (фото + шрифт + рамка) под именем и переключайся между шаблонами в один клик</p>
       <h3>Если что-то пошло не так</h3>
       <ul>
         <li>в меню «Поделиться» нет Instagram → выбери «Сохранить изображения», слайды упадут в галерею - выложи из Instagram как обычно</li>
@@ -517,7 +524,12 @@
         <div class="cabmail" id="cabmail"></div>
         <div class="hint" id="cabcount" style="margin-top:10px"></div>
         <div class="cabgrid" id="cabgrid"></div>
-        <p class="hint" style="margin-top:12px">Нажми на фото - оно станет фоном карусели. Новые фото, которые ты загружаешь в конструктор, попадают сюда сами</p>
+        <p class="hint" style="margin-top:12px">Нажми на фото - оно добавится в карусель, нажми ещё раз - уберётся. Номер на фото = его место в карусели. Новые фото, которые ты загружаешь в конструктор, попадают сюда сами</p>
+        <div class="cabtop" style="margin-top:26px;padding-right:0"><h2 style="margin:0">Наборы фото</h2></div>
+        <div class="hint" id="setcount" style="margin-top:8px"></div>
+        <div class="tpllist" id="setlist"></div>
+        <button class="btn ghost" id="setsave" style="margin-top:12px;width:100%">Сохранить фото карусели как набор</button>
+        <p class="hint" style="margin-top:8px">Набор - подборка фото под одну карусель, например 8 снимков из офиса. Собери фото в карусель (нажимай на них выше), сохрани как набор, а потом переключай наборы прямо на панели под фото. До 12 наборов</p>
         <div class="cabtop" style="margin-top:26px;padding-right:0"><h2 style="margin:0">Мои шаблоны</h2></div>
         <div class="hint" id="tplcount" style="margin-top:8px"></div>
         <div class="tpllist" id="tpllist"></div>
@@ -617,6 +629,8 @@ function renderPool(){
       ? 'Фото расходятся по слайдам по порядку. Поменять фото на конкретном слайде - нажми на слайд. Первое фото = главное'
       : 'В стиле «Классика» на всех слайдах стоит первое фото. Нажми на другое - оно станет первым. В стиле «Плашка» фото разойдутся по слайдам';
   } else h.style.display='none';
+  // кабинет открыт - номера «в карусели» на его фото должны совпадать с пулом
+  const cab=el('cabov'); if(cab&&cab.classList.contains('open')&&kabToken&&typeof renderGallery==='function') renderGallery();
 }
 let state = {
   nick:'@YOUR.NICK', figside:'right', accent:'#C9B37E', lineLen:72, dark:45,
@@ -645,6 +659,8 @@ function soften(k){
   return 'rgb('+m(r)+','+m(g)+','+m(b)+')';
 }
 let templates=[]; // сохранённые шаблоны настроек (живут в кабинете и в kab_local)
+let photoSets=[]; // наборы фото [{name, ids:'id,id,…'}] - подборка под одну карусель, живут в кабинете
+const PHOTO_LIMIT=40, SET_LIMIT=12;
 
 /* ---------- шрифты слайдов: Montserrat вшит, остальные тянутся с Google Fonts ---------- */
 const FONTS={
@@ -1342,7 +1358,7 @@ function settingsSnapshot(){
     coverFit:!!state.coverFit,bw:!!state.bw,dotsOn:state.dotsOn,barOn:state.barOn,
     // пул фото кабинета по порядку (локальные, ещё не долетевшие в кабинет, не входят)
     photoIds: pool.length ? pool.map(p=>p.key).filter(k=>!String(k).startsWith('local:')).join(',') : (state.photoIds||''),
-    templates:templates,lastPhotoId:(pool.length && !String(pool[0].key).startsWith('local:')) ? pool[0].key : (state.lastPhotoId||'')};
+    templates:templates,photoSets:photoSets,lastPhotoId:(pool.length && !String(pool[0].key).startsWith('local:')) ? pool[0].key : (state.lastPhotoId||'')};
 }
 let putFailNoted=false, putRetryT=null;
 function notePutFail(e){
@@ -1372,6 +1388,15 @@ function addMissingTemplates(extra){
   }
   return added;
 }
+/* та же страховка для наборов фото: пустая сторона не затирает наборы с другой */
+function addMissingSets(extra){
+  let added=false;
+  for(const s of (extra||[])){
+    if(!s||typeof s!=='object'||!s.name) continue;
+    if(!photoSets.some(m=>m&&m.name===s.name)&&photoSets.length<SET_LIMIT){ photoSets.push({name:s.name,ids:String(s.ids||'')}); added=true; }
+  }
+  return added;
+}
 
 /* немедленная отправка (для шаблонов - без дебаунса и без вранья в тосте) */
 async function flushSave(){
@@ -1383,7 +1408,8 @@ async function flushSave(){
       // сервер в этой сессии ещё не читали - сперва подтянуть его шаблоны и слить со своими
       const me=await api('/api/me');
       if(me.settings&&Array.isArray(me.settings.templates)) addMissingTemplates(me.settings.templates);
-      renderTemplates(); lastSavedSnap='';
+      if(me.settings&&Array.isArray(me.settings.photoSets)) addMissingSets(me.settings.photoSets);
+      renderTemplates(); renderSets(); lastSavedSnap='';
     }
     const snap=JSON.stringify(settingsSnapshot());
     if(snap!==lastSavedSnap){
@@ -1402,6 +1428,8 @@ function syncTemplatesFromServer(){
     const srv=(me.settings&&Array.isArray(me.settings.templates))?me.settings.templates:[];
     const added=addMissingTemplates(srv);
     if(added) renderTemplates();
+    const srvSets=(me.settings&&Array.isArray(me.settings.photoSets))?me.settings.photoSets:[];
+    if(addMissingSets(srvSets)) renderSets();
     if(lastSavedSnap===null) lastSavedSnap=''; // сервер теперь известен - сохранения снова ходят
     if(JSON.stringify(settingsSnapshot())!==lastSavedSnap) scheduleSave(); // дослать локальное, которого нет на сервере
   }).catch(()=>{});
@@ -1422,6 +1450,7 @@ function applySettings(s){
   if(typeof s.coverScale==='number'&&s.coverScale>=70&&s.coverScale<=130){ state.coverScale=s.coverScale; el('coversize').value=s.coverScale; }
   if(typeof s.font==='string'&&FONTS.hasOwnProperty(s.font)){ state.font=s.font; el('fontsel').value=s.font; ensureFont(s.font).then(rerender); }
   if(Array.isArray(s.templates)){ templates=s.templates.slice(0,12).filter(t=>t&&typeof t==='object'); renderTemplates(); }
+  if(Array.isArray(s.photoSets)){ photoSets=s.photoSets.slice(0,SET_LIMIT).filter(x=>x&&typeof x==='object'&&typeof x.name==='string'&&x.name); renderSets(); }
   Object.keys(map).forEach(id=>{ const k=map[id];
     if(typeof s[k]==='boolean'){ state[k]=s[k]; el(id).checked=s[k]; } });
   if(typeof s.textColor==='string'&&/^#[0-9a-f]{6}$/i.test(s.textColor)) state.textColor=s.textColor;
@@ -1482,23 +1511,34 @@ async function restorePool(){
 function renderGallery(){
   const g=el('cabgrid'); g.innerHTML='';
   kabPhotos.forEach(p=>{
-    const d=document.createElement('div'); d.className='thumb'; d.title='Сделать фоном';
+    const inIdx=pool.findIndex(q=>q.key===p.id);
+    const d=document.createElement('div'); d.className='thumb'+(inIdx>=0?' inpool':'');
+    d.title = inIdx>=0 ? 'Убрать из карусели' : 'Добавить в карусель';
     const im=document.createElement('img'); im.alt='';
     (async()=>{ try{
       if(!photoCache[p.id]){ const r=await api('/api/photos/'+p.id); photoCache[p.id]=URL.createObjectURL(await r.blob()); }
       im.src=photoCache[p.id];
     }catch(e){} })();
-    d.onclick=()=>{ setBgFromPhoto(p.id); closeCab(); toast('Фон установлен ✓'); };
-    const x=document.createElement('button'); x.className='thumbdel'; x.textContent='✕'; x.title='Удалить';
+    // тап = добавить в карусель (в классике - сразу фоном, в плашке - в конец), повторный тап = убрать
+    d.onclick=async()=>{
+      const i=pool.findIndex(q=>q.key===p.id);
+      if(i>=0){ poolRemove(i); renderGallery(); toast('Фото убрано из карусели'); return; }
+      if(pool.length>=POOL_MAX){ toast('В карусели уже '+POOL_MAX+' фото'); return; }
+      await setBgFromPhoto(p.id, state.style!=='plate');
+      renderGallery();
+      toast(state.style==='plate' ? 'Фото добавлено в карусель ('+pool.length+')' : 'Фон установлен ✓');
+    };
+    if(inIdx>=0){ const n=document.createElement('div'); n.className='tnum'; n.textContent=inIdx+1; d.appendChild(n); }
+    const x=document.createElement('button'); x.className='thumbdel'; x.textContent='✕'; x.title='Удалить из кабинета';
     x.onclick=ev=>{ ev.stopPropagation(); delPhoto(p.id); };
     d.appendChild(im); d.appendChild(x); g.appendChild(d);
   });
-  if(kabPhotos.length<20){
+  if(kabPhotos.length<PHOTO_LIMIT){
     const add=document.createElement('div'); add.className='thumb addtile'; add.textContent='+'; add.title='Добавить фото';
     add.onclick=()=>el('cabfile').click();
     g.appendChild(add);
   }
-  el('cabcount').textContent=kabPhotos.length?('Фото: '+kabPhotos.length+' из 20'):'Пока нет фото - жми «+» или загрузи фон в конструктор';
+  el('cabcount').textContent=kabPhotos.length?('Фото: '+kabPhotos.length+' из '+PHOTO_LIMIT+(pool.length?' · в карусели: '+pool.filter(q=>!String(q.key).startsWith('local:')).length:'')):'Пока нет фото - жми «+» или загрузи фон в конструктор';
 }
 
 async function delPhoto(id){
@@ -1530,19 +1570,73 @@ function renderTemplates(){
   el('tplcount').textContent=templates.length?('Шаблонов: '+templates.length+' из 12'):'Пока нет шаблонов - настрой конструктор как нравится и сохрани';
 }
 function applyTemplate(t){
-  const s={...t}; delete s.name; delete s.lastPhotoId; delete s.templates;
+  const s={...t}; delete s.name; delete s.lastPhotoId; delete s.templates; delete s.photoSets; // наборы - не часть шаблона
   if(!s.textColor) s.textColor='#FFFFFF'; // шаблоны, сохранённые до появления цвета текста, были белыми
   if(!s.style) s.style='classic';        // шаблоны до появления стилей - классика
   applySettings(s);
-  if(t.lastPhotoId&&kabPhotos.some(p=>p.id===t.lastPhotoId)) setBgFromPhoto(t.lastPhotoId);
+  // фото шаблона: весь его пул (новые шаблоны) или одно фото-фон (старые)
+  const ids=String(t.photoIds||'').split(',').filter(id=>id&&kabPhotos.some(p=>p.id===id));
+  if(!ids.length&&t.lastPhotoId&&kabPhotos.some(p=>p.id===t.lastPhotoId)) ids.push(t.lastPhotoId);
+  if(ids.length){ applySet({name:t.name||'', ids:ids.join(',')}, true); }
   rerender(); scheduleSave(); closeCab(); toast('Шаблон «'+(t.name||'')+'» применён ✓');
 }
 
-function updateCabBtn(){ el('cabbtn').textContent=kabToken?('Кабинет: '+kabEmail):'Личный кабинет'; }
+/* ---------- наборы фото: подборка под одну карусель, переключается селектом под фото ---------- */
+function setIds(s){ return String((s&&s.ids)||'').split(',').filter(Boolean); }
+function renderSets(){
+  const box=el('setlist'); if(!box) return;
+  box.innerHTML='';
+  photoSets.forEach((s,i)=>{
+    const ids=setIds(s), alive=ids.filter(id=>kabPhotos.some(p=>p.id===id)).length;
+    const d=document.createElement('div'); d.className='tpl'; d.title='Поставить этот набор в карусель';
+    const n=document.createElement('span'); n.textContent=(s.name||('Набор '+(i+1)))+' · '+alive+(alive!==ids.length?' из '+ids.length:'')+' фото';
+    const x=document.createElement('button'); x.className='tpldel'; x.textContent='✕'; x.title='Удалить набор (фото остаются в кабинете)';
+    x.onclick=ev=>{ ev.stopPropagation();
+      if(!confirm('Удалить набор «'+(s.name||'')+'»? Фото останутся в кабинете')) return;
+      photoSets.splice(i,1); renderSets(); flushSave(); };
+    d.onclick=()=>{ applySet(s); closeCab(); };
+    d.appendChild(n); d.appendChild(x); box.appendChild(d);
+  });
+  el('setcount').textContent=photoSets.length?('Наборов: '+photoSets.length+' из '+SET_LIMIT):'Пока нет наборов - собери фото в карусель и сохрани их как набор';
+  renderSetSelect();
+}
+function renderSetSelect(){
+  const row=el('setrow'), sel=el('setsel'); if(!row||!sel) return;
+  if(!kabToken||!photoSets.length){ row.style.display='none'; return; }
+  sel.innerHTML='';
+  const o0=document.createElement('option'); o0.value=''; o0.textContent='Набор фото: выбрать…'; sel.appendChild(o0);
+  photoSets.forEach((s,i)=>{ const o=document.createElement('option'); o.value=String(i); o.textContent=(s.name||('Набор '+(i+1)))+' ('+setIds(s).length+')'; sel.appendChild(o); });
+  row.style.display='block';
+}
+async function applySet(s, quiet){
+  const ids=setIds(s).filter(id=>kabPhotos.some(p=>p.id===id));
+  if(!ids.length){ if(!quiet) toast('В этом наборе не осталось фото - они удалены из кабинета'); return; }
+  pool=[]; slideMap={}; syncMain(); renderPool();
+  for(const id of ids){ await setBgFromPhoto(id, false); }
+  updDrop(); rerender(); scheduleSave();
+  const lost=setIds(s).length-ids.length;
+  if(!quiet) toast('Набор «'+(s.name||'')+'» в карусели: '+ids.length+' фото'+(lost?' ('+lost+' удалены из кабинета)':''));
+}
+el('setsel').onchange=e=>{ const i=parseInt(e.target.value); e.target.value=''; if(!isNaN(i)&&photoSets[i]) applySet(photoSets[i]); };
+el('setsave').onclick=async()=>{
+  const ids=pool.map(p=>p.key).filter(k=>!String(k).startsWith('local:'));
+  if(!ids.length){ toast('Сначала собери фото в карусель - нажимай на фото выше'); return; }
+  if(photoSets.length>=SET_LIMIT){ toast('Максимум '+SET_LIMIT+' наборов - удали какой-нибудь'); return; }
+  const name=(prompt('Название набора (например «Офис» или «Улица»):')||'').trim();
+  if(!name) return;
+  const ex=photoSets.findIndex(s=>s.name===name.slice(0,40));
+  if(ex>=0){ if(!confirm('Набор «'+name+'» уже есть. Заменить его фото на текущие?')) return; photoSets[ex].ids=ids.join(','); }
+  else photoSets.push({name:name.slice(0,40), ids:ids.join(',')});
+  renderSets();
+  const r=await flushSave();
+  toast(r.ok?'Набор «'+name+'» сохранён в кабинете ✓ ('+ids.length+' фото)':'Набор пока только на этом устройстве - в кабинет дошлю, как появится связь');
+};
+
+function updateCabBtn(){ el('cabbtn').textContent=kabToken?('Кабинет: '+kabEmail):'Личный кабинет'; renderSetSelect(); }
 function showCabView(){
   el('cabauth').style.display=kabToken?'none':'block';
   el('cabmain').style.display=kabToken?'block':'none';
-  if(kabToken){ el('cabmail').textContent=kabEmail; renderGallery(); renderTemplates(); }
+  if(kabToken){ el('cabmail').textContent=kabEmail; renderGallery(); renderSets(); renderTemplates(); }
 }
 function closeCab(){ el('cabov').classList.remove('open'); }
 function kabLogout(){
@@ -1577,11 +1671,13 @@ async function kabAuth(mode){
       if(up){ scheduleSave(); toast(up===1?'Твоё фото уже в кабинете ✓':'Твои фото уже в кабинете ✓'); }
     } else {
       const localTpls=templates.slice(); // шаблоны, жившие на этом устройстве до входа
+      const localSets=photoSets.slice();
       const me=await api('/api/me');
       kabEmail=me.email; kabPhotos=me.photos||[];
       applySettings(me.settings); lastSavedSnap=JSON.stringify(settingsSnapshot());
-      // локальные шаблоны, которых нет на сервере, не теряем - доклеиваем и досылаем
+      // локальные шаблоны и наборы, которых нет на сервере, не теряем - доклеиваем и досылаем
       if(addMissingTemplates(localTpls)){ renderTemplates(); scheduleSave(); }
+      if(addMissingSets(localSets)){ renderSets(); scheduleSave(); }
       rerender();
       restorePool();
     }
@@ -1612,7 +1708,7 @@ el('tplsave').onclick=async()=>{
   if(templates.length>=12){ toast('Максимум 12 шаблонов - удали какой-нибудь'); return; }
   const name=(prompt('Название шаблона (например «Тёмный с засечками»):')||'').trim();
   if(!name) return;
-  const t={...settingsSnapshot(), name:name.slice(0,40)}; delete t.templates;
+  const t={...settingsSnapshot(), name:name.slice(0,40)}; delete t.templates; delete t.photoSets;
   templates.push(t); renderTemplates();
   // тост честный: «сохранён» только после ответа сервера, а не до отправки
   const r=await flushSave();
@@ -1644,6 +1740,7 @@ el('cabfile').onchange=async e=>{
   if(kabToken){
     const preSnap=JSON.stringify(settingsSnapshot()); // защита от гонки: юзер мог начать работать, пока летит /api/me
     const localTpls=templates.slice(); // копия локальных шаблонов ДО применения серверных
+    const localSets=photoSets.slice();
     try{
       const me=await api('/api/me');
       kabEmail=me.email;
@@ -1654,6 +1751,7 @@ el('cabfile').onchange=async e=>{
         // сервер прислал пусто, а локально шаблоны есть = чей-то залежавшийся клиент их затёр.
         // Возвращаем и досылаем на сервер, вместо того чтобы затереть и локальную копию
         if(addMissingTemplates(localTpls)){ renderTemplates(); scheduleSave(); }
+        if(addMissingSets(localSets)){ renderSets(); scheduleSave(); }
       }
       renderGallery();
       if(el('cabov').classList.contains('open')) showCabView();
