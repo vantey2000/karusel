@@ -330,8 +330,16 @@
         <label class="tg only-classic"><input type="checkbox" id="t_counter" checked> счётчик N/total</label>
         <label class="tg only-plate"><input type="checkbox" id="t_dots" checked> точки-индикатор</label>
         <label class="tg only-plate"><input type="checkbox" id="t_bar" checked> цветная полоска на обложке</label>
-        <label class="tg only-plate"><input type="checkbox" id="t_bw"> фото чёрно-белое</label>
       </div>
+    </div>
+
+    <div class="field">
+      <div class="labelrow">
+        <label>Насыщенность фото</label>
+        <span class="pct" id="satpct">100%</span>
+      </div>
+      <input type="range" id="sat" min="0" max="100" value="100">
+      <div class="hint">100 - цвет как на фото, 0 - чёрно-белое. Между ними - приглушённый цвет. Действует на все слайды сразу</div>
     </div>
 
     <div class="field only-classic">
@@ -473,7 +481,7 @@
       <p>Кнопки «Справа / Слева / Нет». Текст сам обходит твоё лицо - программа должна знать, с какой ты стороны</p>
       <h3>4. Настрой рамку под себя</h3>
       <p>Галочки включают и выключают элементы: ник, линии, иконки, стрелку «дальше», счётчик. Пипетками меняешь цвет линий и цвет текста, ползунками - длину верхней линии (чтобы не ложилась на лицо) и затемнение фона (чем темнее, тем лучше читается текст). Ниже можно сменить шрифт слайдов и размеры текста в процентах - обложка и остальные слайды отдельно; если текст с выбранным размером не влезает, программа сама ужмёт его. Не уверен - оставь как есть</p>
-      <p><b>Про стиль «Плашка».</b> Переключатель «Стиль карусели» сверху: «Классика» - текст прямо на фото с линиями и иконками, «Плашка» - текст лежит на тёмной плашке внизу слайда, лицо сверху остаётся свободным, внизу точки-индикатор и стрелка «>>», на обложке красная планка слева. Фото в этом стиле не затемняется, поэтому годится и светлое. Галочка «фото чёрно-белое» делает все слайды монохромными, как у многих авторов. Тонкие настройки (плотность плашки, высота плашки на обложке, «вписать фото целиком» для узких вертикальных снимков) спрятаны под кнопкой «Тонкая настройка плашки» - трогать их не обязательно, значения сняты с эталона</p>
+      <p><b>Про стиль «Плашка».</b> Переключатель «Стиль карусели» сверху: «Классика» - текст прямо на фото с линиями и иконками, «Плашка» - текст лежит на тёмной плашке внизу слайда, лицо сверху остаётся свободным, внизу точки-индикатор и стрелка «>>», на обложке красная планка слева. Фото в этом стиле не затемняется, поэтому годится и светлое. Ползунок «Насыщенность фото» работает в обоих стилях: 100 - цвет как на фото, 0 - чёрно-белое, между ними приглушённый цвет, как у многих авторов. Тонкие настройки (плотность плашки, высота плашки на обложке, «вписать фото целиком» для узких вертикальных снимков) спрятаны под кнопкой «Тонкая настройка плашки» - трогать их не обязательно, значения сняты с эталона</p>
       <p><b>Про цвет текста.</b> Пять кружков рядом с пипеткой - готовые варианты (белый, кремовый, золото, серый, чёрный), пипетка даёт любой свой. Цвет ложится сразу на весь текст: обложку, пункты, ник и счётчик. Взял тёмный текст под светлое фото - программа сама перевернёт подсветку под буквами и вуаль на фоне (ползунок станет «Осветление фона»), так что читаться будет одинаково хорошо</p>
       <h3>5. Вставь текст поста</h3>
       <ul>
@@ -643,7 +651,7 @@ let state = {
   font:'Montserrat', fontScale:100, coverScale:100, textColor:'#FFFFFF',
   // стиль «Плашка»: текст на тёмной плашке снизу (эталон - карусели panchenko_sport)
   style:'classic', plateAlpha:88, coverBottom:74, coverFit:false,
-  bw:false, dotsOn:true, barOn:true
+  sat:100, dotsOn:true, barOn:true   // sat: насыщенность фото 0 (ч/б) … 100 (как на фото), в обоих стилях
 };
 // акцент по умолчанию у стилей разный: золото линий в классике, красная планка и точка в плашке
 const STYLE_ACCENT={classic:'#C9B37E', plate:'#D5282E'};
@@ -833,17 +841,14 @@ function grayOf(img){
 /* ---------- фон слайда: cover-fit (заполнить кадр) или contain-fit на подложку (обложка «Плашки») ---------- */
 function drawBackground(ctx, img, fit){
   if(!img){ ctx.fillStyle='#232325'; ctx.fillRect(0,0,W,H); return; }
-  const src = (state.style==='plate' && state.bw) ? grayOf(img) : img;
-  if(fit==='contain'){
-    ctx.fillStyle='#151515'; ctx.fillRect(0,0,W,H);
-    const k = Math.min(W/img.width, H/img.height);
-    const dw=img.width*k, dh=img.height*k;
-    ctx.drawImage(src, (W-dw)/2, (H-dh)/2, dw, dh);
-  } else {
-    const k = Math.max(W/img.width, H/img.height);
-    const dw=img.width*k, dh=img.height*k;
-    ctx.drawImage(src, (W-dw)/2, (H-dh)/2, dw, dh);
-  }
+  const k = fit==='contain' ? Math.min(W/img.width, H/img.height) : Math.max(W/img.width, H/img.height);
+  const dw=img.width*k, dh=img.height*k, dx=(W-dw)/2, dy=(H-dh)/2;
+  if(fit==='contain'){ ctx.fillStyle='#151515'; ctx.fillRect(0,0,W,H); }
+  ctx.drawImage(img, dx, dy, dw, dh);
+  // насыщенность: поверх цветного кадра его серая копия с прозрачностью (1 - sat) = линейное обесцвечивание,
+  // без ctx.filter (Safari до 18) и без пересчёта пикселей на каждое движение ползунка
+  const sat = (typeof state.sat==='number') ? Math.max(0,Math.min(100,state.sat)) : 100;
+  if(sat<100){ ctx.globalAlpha = 1 - sat/100; ctx.drawImage(grayOf(img), dx, dy, dw, dh); ctx.globalAlpha=1; }
 }
 
 /* ---------- стиль «Плашка»: геометрия снята с эталона (1080x1350) ---------- */
@@ -1283,14 +1288,16 @@ el('textcolor').oninput=e=>setTextColor(e.target.value);
 document.querySelectorAll('#swatches button').forEach(b=>b.onclick=()=>setTextColor(b.dataset.c));
 updTextColorUI(); // подсветить активный кружок на старте, до применения настроек кабинета
 function updPct(){ el('darkpct').textContent=el('darklvl').value+'%'; el('linelenpct').textContent=el('linelen').value+'%'; el('fontpct').textContent=el('fontsize').value+'%'; el('coverpct').textContent=el('coversize').value+'%';
-  el('platealphapct').textContent=el('platealpha').value+'%'; el('coverbottompct').textContent=el('coverbottom').value+'%'; }
+  el('platealphapct').textContent=el('platealpha').value+'%'; el('coverbottompct').textContent=el('coverbottom').value+'%';
+  el('satpct').textContent = el('sat').value==='0' ? 'ч/б' : el('sat').value+'%'; }
 el('linelen').oninput=e=>{ state.lineLen=parseInt(e.target.value); updPct(); rerender(); };
 document.querySelectorAll('#figside button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#figside button').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); state.figside=b.dataset.v; rerender();
 });
 const map={t_nick:'nickOn',t_lines:'linesOn',t_icons:'iconsOn',t_arrow:'arrowOn',t_counter:'counterOn',
-  t_dots:'dotsOn',t_bar:'barOn',t_bw:'bw',t_coverfit:'coverFit'};
+  t_dots:'dotsOn',t_bar:'barOn',t_coverfit:'coverFit'};
+el('sat').oninput=e=>{ state.sat=parseInt(e.target.value); updPct(); rerender(); };
 Object.keys(map).forEach(id=>el(id).onchange=e=>{ state[map[id]]=e.target.checked; rerender(); });
 el('darklvl').oninput=e=>{ state.dark=parseInt(e.target.value); updPct(); rerender(); };
 
@@ -1383,7 +1390,7 @@ function settingsSnapshot(){
     nickOn:state.nickOn,linesOn:state.linesOn,iconsOn:state.iconsOn,arrowOn:state.arrowOn,counterOn:state.counterOn,
     font:state.font,fontScale:state.fontScale,coverScale:state.coverScale,textColor:state.textColor,
     style:state.style||'classic',plateAlpha:state.plateAlpha,coverBottom:state.coverBottom,
-    coverFit:!!state.coverFit,bw:!!state.bw,dotsOn:state.dotsOn,barOn:state.barOn,
+    coverFit:!!state.coverFit,sat:(typeof state.sat==='number'?state.sat:100),dotsOn:state.dotsOn,barOn:state.barOn,
     // пул фото кабинета по порядку (локальные, ещё не долетевшие в кабинет, не входят)
     photoIds: pool.length ? pool.map(p=>p.key).filter(k=>!String(k).startsWith('local:')).join(',') : (state.photoIds||''),
     templates:templates,photoSets:photoSets,lastPhotoId:(pool.length && !String(pool[0].key).startsWith('local:')) ? pool[0].key : (state.lastPhotoId||'')};
@@ -1485,6 +1492,8 @@ function applySettings(s){
   if(s.style==='plate'||s.style==='classic') state.style=s.style;
   if(typeof s.plateAlpha==='number'&&s.plateAlpha>=50&&s.plateAlpha<=100){ state.plateAlpha=s.plateAlpha; el('platealpha').value=s.plateAlpha; }
   if(typeof s.coverBottom==='number'&&s.coverBottom>=55&&s.coverBottom<=90){ state.coverBottom=s.coverBottom; el('coverbottom').value=s.coverBottom; }
+  if(typeof s.sat==='number'&&s.sat>=0&&s.sat<=100){ state.sat=Math.round(s.sat); el('sat').value=state.sat; }
+  else if(s.sat===undefined&&s.bw===true){ state.sat=0; el('sat').value=0; } // старая галочка «чёрно-белое» = насыщенность 0
   if(s.lastPhotoId!==undefined) state.lastPhotoId=s.lastPhotoId;
   if(typeof s.photoIds==='string') state.photoIds=s.photoIds.slice(0,1000);
   updPct(); updTextColorUI(); updStyleUI();
