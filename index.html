@@ -285,7 +285,11 @@
       <div class="drop" id="drop">Перетащи сюда фото или <b>нажми, чтобы выбрать</b><br><span class="hint" style="color:#6f6f78" id="drophint">лучше вертикальное, человек сбоку</span></div>
       <input type="file" id="bgfile" accept="image/*" multiple hidden>
       <div class="pool" id="pool"></div>
+      <div id="poolbar" style="display:none;margin-top:8px">
+        <button type="button" class="clearbtn" id="shuffle" title="Случайный порядок фото">🎲 Перемешать фото</button>
+      </div>
       <div class="hint" id="poolhint" style="display:none"></div>
+      <div class="warn" id="poolwarn" style="display:none"></div>
       <div id="setrow" style="display:none;margin-top:10px">
         <select id="setsel"></select>
         <div class="hint">Наборы фото из кабинета. Выбери набор - фото карусели заменятся на него</div>
@@ -462,7 +466,7 @@
       <h2>Как собрать карусель за 5 минут</h2>
       <p>Слайды собираются прямо в твоём браузере, регистрация не обязательна. Если без кабинета - фото никуда не отправляется. Если завёл личный кабинет - фото и настройки хранятся в нём на сервере, чтобы не загружать заново</p>
       <h3>1. Загрузи своё фото</h3>
-      <p>Лучше вертикальное, где ты стоишь сбоку кадра, а не по центру, на тёмном или спокойном фоне - так текст читается лучше всего. Можно выбрать сразу несколько фото: под дропом появятся миниатюры. В «Классике» на всех слайдах стоит первое фото (нажми на другую миниатюру - она станет первой). В «Плашке» фото расходятся по слайдам по очереди, а поменять фото на конкретном слайде можно тапом по самому слайду. Крестик на миниатюре убирает фото из карусели</p>
+      <p>Лучше вертикальное, где ты стоишь сбоку кадра, а не по центру, на тёмном или спокойном фоне - так текст читается лучше всего. Можно выбрать сразу несколько фото: под дропом появятся миниатюры. В «Классике» на всех слайдах стоит первое фото (нажми на другую миниатюру - она станет первой). В «Плашке» фото расходятся по слайдам по очереди, а поменять фото на конкретном слайде можно тапом по самому слайду. Кнопка «🎲 Перемешать фото» ставит их в случайном порядке: каждый раз новая раскладка, одно фото - один слайд. Если фото меньше, чем слайдов, конструктор предупредит, что на каких слайдах они повторятся. Крестик на миниатюре убирает фото из карусели</p>
       <h3>2. Впиши свой ник</h3>
       <p>Как в Instagram, например @anna.smm - он появится сверху на каждом слайде</p>
       <h3>3. Укажи, где ты на фото</h3>
@@ -623,6 +627,7 @@ function renderPool(){
     box.appendChild(d);
   });
   const h=el('poolhint');
+  el('poolbar').style.display = pool.length>1 ? 'block' : 'none';
   if(pool.length>1){
     h.style.display='block';
     h.textContent = state.style==='plate'
@@ -1089,6 +1094,7 @@ function rerender(){
     }
     cont.appendChild(card);
   });
+  updPoolWarn();
   if(bootDone) scheduleSave();
 }
 
@@ -1230,6 +1236,28 @@ function openPicker(i){
     g.appendChild(d);
   });
   el('pickov').classList.add('open');
+}
+/* перемешать: случайный порядок пула (Фишер-Йетс), ручные привязки сбрасываются, первое фото = главное */
+el('shuffle').onclick=()=>{
+  if(pool.length<2) return;
+  const before=pool.map(p=>p.key).join('|');
+  for(let t=0;t<10;t++){
+    for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const tmp=pool[i]; pool[i]=pool[j]; pool[j]=tmp; }
+    if(pool.map(p=>p.key).join('|')!==before) break; // тот же порядок, что был - тасуем ещё раз
+  }
+  slideMap={}; syncMain(); renderPool(); updDrop(); rerender(); toast('Фото перемешаны 🎲');
+};
+/* предупреждение, когда одно фото попадает на два слайда: фото меньше, чем слайдов, или ручной выбор совпал */
+function updPoolWarn(){
+  const w=el('poolwarn'); if(!w) return;
+  if(state.style!=='plate'||pool.length<2||!slidesData.length){ w.style.display='none'; return; }
+  const n=slidesData.length, seen=new Map(), dups=[], pairs=[];
+  for(let i=0;i<n;i++){ const img=photoFor(i); if(seen.has(img)){ dups.push(i+1); pairs.push((i+1)+' (как '+seen.get(img)+')'); } else seen.set(img,i+1); }
+  if(!dups.length){ w.style.display='none'; return; }
+  w.style.display='block';
+  w.textContent = pool.length<n
+    ? 'Фото: '+pool.length+', слайдов: '+n+' - на слайдах '+dups.join(', ')+' фото повторятся. Добавь ещё '+(n-pool.length)+', чтобы на каждом слайде было своё'
+    : 'Фото повторяется на слайде '+pairs.join(', ')+' - нажми на слайд и выбери другое или перемешай';
 }
 el('pickclose').onclick=()=>el('pickov').classList.remove('open');
 el('pickov').addEventListener('click',e=>{ if(e.target===el('pickov')) el('pickov').classList.remove('open'); });
